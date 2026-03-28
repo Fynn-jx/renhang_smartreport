@@ -1,0 +1,130 @@
+{
+  "description": "国家数据源配置文件示例",
+  "version": "1.0",
+  "countries": [
+    {
+      "country_code": "AE",
+      "country_name": "阿联酋",
+      "country_name_en": "United Arab Emirates",
+      "region": "中东",
+      "income_level": "高收入",
+      "currency": "AED",
+      "data_sources": [
+        {
+          "name": "GDP增速",
+          "type": "trading_economics",
+          "url": "https://zh.tradingeconomics.com/united-arab-emirates/gdp-growth-annual",
+          "label": "GDP增速 (Trading Economics)",
+          "description": "阿联酋GDP年度增长率数据",
+          "enabled": true
+        },
+        {
+          "name": "通胀率",
+          "type": "trading_economics",
+          "url": "https://zh.tradingeconomics.com/united-arab-emirates/inflation-cpi",
+          "label": "通胀率CPI (Trading Economics)",
+          "enabled": true
+        },
+        {
+          "name": "失业率",
+          "type": "trading_economics",
+          "url": "https://zh.tradingeconomics.com/united-arab-emirates/unemployment-rate",
+          "label": "失业率 (Trading Economics)",
+          "enabled": true
+        },
+        {
+          "name": "政府债务",
+          "type": "trading_economics",
+          "url": "https://zh.tradingeconomics.com/united-arab-emirates/government-debt-to-gdp",
+          "label": "政府债务占GDP比重 (Trading Economics)",
+          "enabled": true
+        },
+        {
+          "name": "央行货币政策",
+          "type": "central_bank",
+          "url": "https://www.centralbank.ae/en/",
+          "label": "货币政策 (阿联酋央行)",
+          "description": "阿联酋央行官方网站货币政策页面",
+          "enabled": true
+        },
+        {
+          "name": "国家概况",
+          "type": "china_mfa",
+          "url": "https://www.mfa.gov.cn/web/gjhdq_676201/gj_676203/fz_677316/1206_677342/1206x0_677344/",
+          "label": "国家概况 (中国外交部)",
+          "description": "中国外交部提供的国家概况信息",
+          "enabled": true
+        },
+        {
+          "name": "对华关系",
+          "type": "china_mfa",
+          "url": "https://www.mfa.gov.cn/web/gjhdq_676201/gj_676203/fz_677316/1206_677342/sbgx_677346/",
+          "label": "对华关系 (中国外交部)",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "country_code": "TR",
+      "country_name": "土耳其",
+      "country_name_en": "Turkey",
+      "region": "中东, 欧洲",
+      "income_level": "中等收入",
+      "currency": "TRY",
+      "data_sources": [
+        {
+          "name": "GDP增速",
+          "type": "trading_economics",
+          "url": "https://zh.tradingeconomics.com/turkey/gdp-growth-annual",
+          "label": "GDP增速 (Trading Economics)",
+          "enabled": true
+        },
+        {
+          "name": "通胀率",
+          "type": "trading_economics",
+          "url": "https://zh.tradingeconomics.com/turkey/inflation-cpi",
+          "label": "通胀率CPI (Trading Economics)",
+          "enabled": true
+        },
+        {
+          "name": "央行货币政策",
+          "type": "central_bank",
+          "url": "https://www.tcmb.gov.tr/",
+          "label": "货币政策 (土耳其央行)",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "country_code": "ID",
+      "country_name": "印度尼西亚",
+      "country_name_en": "Indonesia",
+      "region": "东南亚",
+      "income_level": "中等收入",
+      "currency": "IDR",
+      "data_sources": [
+        {
+          "name": "GDP增速",
+          "type": "trading_economics",
+          "url": "https://zh.tradingeconomics.com/indonesia/gdp-growth-annual",
+          "label": "GDP增速 (Trading Economics)",
+          "enabled": true
+        },
+        {
+          "name": "通胀率",
+          "type": "trading_economics",
+          "url": "https://zh.tradingeconomics.com/indonesia/inflation-cpi",
+          "label": "通胀率CPI (Trading Economics)",
+          "enabled": true
+        },
+        {
+          "name": "央行货币政策",
+          "type": "central_bank",
+          "url": "https://www.bi.go.id/en/",
+          "label": "货币政策 (印尼央行)",
+          "enabled": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+backend/
+├── 📄 main.py                          # FastAPI 应用入口
+├── 📄 pyproject.toml                   # Poetry 项目配置
+├── 📄 requirements.txt                 # 依赖列表
+├── 📄 .env.example                     # 环境变量示例
+├── 📄 .gitignore                       # Git 忽略规则
+├── 📄 README.md                        # 项目说明文档
+├── 📄 PROJECT_STRUCTURE.md             # 项目结构详细说明
+│
+├── 📂 api/                             # 📡 API 路由层
+│   ├── __init__.py
+│   ├── dependencies.py                 # 🔑 依赖注入（认证等）
+│   ├── v1/
+│   │   ├── __init__.py
+│   │   └── api.py                     # 🔗 API v1 主路由聚合
+│   └── endpoints/
+│       ├── __init__.py
+│       ├── documents.py               # 📄 文档管理端点
+│       ├── tasks.py                   # ✅ 任务管理端点
+│       ├── knowledge.py               # 📚 知识库端点
+│       ├── workflows.py               # 🔄 工作流端点
+│       └── storage.py                 # 💾 文件存储端点
+│
+├── 📂 core/                            # ⚙️ 核心配置层
+│   ├── __init__.py
+│   ├── config.py                      # 🔧 配置类（环境变量）
+│   ├── database.py                    # 🗄️ 数据库连接管理
+│   ├── redis.py                       # 🔴 Redis 连接管理
+│   ├── security.py                    # 🔐 安全功能（JWT、密码）
+│   └── constants.py                   # 📋 业务常量枚举
+│
+├── 📂 models/                          # 🗄️ 数据库模型层
+│   ├── __init__.py
+│   ├── base.py                        # 📦 Base 类和通用方法
+│   ├── document.py                    # 📄 文档模型
+│   ├── task.py                        # ✅ 任务历史模型
+│   ├── knowledge.py                   # 📚 知识库模型
+│   ├── user.py                        # 👤 用户模型
+│   └── tag.py                         # 🏷️ 标签模型
+│
+├── 📂 schemas/                         # 📋 Pydantic 模型层
+│   ├── __init__.py
+│   ├── document.py                    # 📄 文档相关 Schema
+│   ├── task.py                        # ✅ 任务相关 Schema
+│   ├── knowledge.py                   # 📚 知识库相关 Schema
+│   ├── user.py                        # 👤 用户相关 Schema
+│   └── common.py                      # 📦 通用 Schema（分页、响应）
+│
+├── 📂 services/                        # 🔧 业务逻辑层
+│   ├── __init__.py
+│   ├── document_service.py            # 📄 文档管理业务逻辑
+│   ├── task_service.py                # ✅ 任务管理业务逻辑
+│   ├── knowledge_service.py           # 📚 知识库业务逻辑
+│   ├── ai_service.py                  # 🤖 AI 调用服务
+│   ├── file_service.py                # 📁 文件处理服务
+│   └── workflow_service.py            # 🔄 工作流编排服务
+│
+├── 📂 tasks/                           # 🔄 异步任务层
+│   ├── __init__.py
+│   ├── celery_app.py                  # ⚙️ Celery 应用配置
+│   ├── document_tasks.py              # 📄 文档相关任务
+│   ├── workflow_tasks.py              # 🔄 工作流任务
+│   └── ai_tasks.py                    # 🤖 AI 调用任务
+│
+├── 📂 utils/                           # 🛠️ 工具函数层
+│   ├── __init__.py
+│   ├── text_processing.py             # 📝 文本处理（分块、清洗）
+│   ├── file_utils.py                  # 📁 文件操作工具
+│   ├── pdf_extractor.py               # 📕 PDF 提取
+│   ├── sse_manager.py                 # 📡 SSE 连接管理器
+│   ├── retry.py                       # 🔄 重试装饰器
+│   └── logger.py                      # 📊 日志配置
+│
+├── 📂 vector_store/                    # 🔍 向量存储层
+│   ├── __init__.py
+│   ├── base.py                        # 📦 向量存储基类
+│   ├── pgvector_store.py              # 🐘 pgvector 实现
+│   ├── qdrant_store.py                # 🔴 Qdrant 实现（可选）
+│   └── embeddings.py                  # 🎯 向量生成
+│
+├── 📂 workflows/                       # 🧩 工作流定义层
+│   ├── __init__.py
+│   ├── base.py                        # 📦 工作流基类
+│   ├── academic_to_official.py        # 📄 学术报告转公文
+│   ├── translation.py                 # 🌐 公文翻译
+│   ├── country_research.py            # 🌍 国别研究
+│   ├── quarterly_report.py            # 📊 季度报告
+│   └── image_translation.py           # 🖼️ 图片转译
+│
+├── 📂 storage/                         # 💾 文件存储层
+│   ├── uploads/                       # 📤 用户上传的原始文件
+│   │   ├── pdfs/
+│   │   ├── images/
+│   │   └── docs/
+│   ├── thumbnails/                    # 🖼️ PDF/图片缩略图
+│   ├── cache/                         # ⏰ 临时缓存文件
+│   └── .gitkeep                       # 保持目录结构
+│
+├── 📂 tests/                           # 🧪 测试层
+│   ├── __init__.py
+│   ├── conftest.py                    # 🔧 pytest 配置
+│   ├── test_api/                      # 🌐 API 测试
+│   ├── test_services/                 # 🔧 服务层测试
+│   ├── test_workflows/                # 🔄 工作流测试
+│   └── test_utils/                    # 🛠️ 工具函数测试
+│
+└── 📂 scripts/                         # 📜 脚本层
+    ├── __init__.py
+    ├── init_db.py                     # 🗄️ 数据库初始化
+    ├── import_knowledge.py            # 📚 导入知识库
+    ├── migrate.py                     # 🔄 数据迁移
+    └── cleanup.py                     # 🧹 清理脚本
+
+
+📊 图例说明：
+────────────
+📄  文档相关
+✅  任务相关
+📚  知识库相关
+🤖  AI 相关
+🔄  工作流相关
+💾  存储相关
+🔧  配置/工具
+📡  网络/通信
+🔐  安全相关
+
+
+🎯 开发流程指南：
+────────────
+1️⃣ 新增数据库模型 → models/
+2️⃣ 定义 Schema → schemas/
+3️⃣ 实现业务逻辑 → services/
+4️⃣ 创建 API 端点 → api/endpoints/
+5️⃣ 注册路由 → api/v1/api.py
+6️⃣ 编写测试 → tests/
+
+
+📌 重要规则：
+────────────
+✅ API 层 → 服务层 → 模型层
+❌ 不跨层调用
+❌ 不在 API 层写业务逻辑
+❌ 不在服务层返回 HTTP 响应
+
+
+🚀 下一步：
+────────────
+1. 配置 .env 文件
+2. 安装依赖: pip install -r requirements.txt
+3. 启动数据库: PostgreSQL + Redis
+4. 初始化数据库: alembic upgrade head
+5. 启动服务: python main.py
+6. 访问文档: http://localhost:8000/docs

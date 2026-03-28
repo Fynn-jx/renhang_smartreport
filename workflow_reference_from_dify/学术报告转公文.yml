@@ -1,0 +1,767 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 学术报告转公文
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/siliconflow:0.0.45@c3b4e788bdac202445fe0a1d82ff81fbc0f24f7ef3aaeef4785908d1d972fa84
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 50
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: document-extractor
+      id: 1768308107134-source-1768311989637-target
+      source: '1768308107134'
+      sourceHandle: source
+      target: '1768311989637'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1768981989970'
+        sourceType: iteration-start
+        targetType: llm
+      id: 1768981989970start-source-1768982048636-target
+      selected: false
+      source: 1768981989970start
+      sourceHandle: source
+      target: '1768982048636'
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: template-transform
+      id: 1768981989970-source-1768982531292-target
+      source: '1768981989970'
+      sourceHandle: source
+      target: '1768982531292'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: template-transform
+        targetType: llm
+      id: 1768982531292-source-1768487126102-target
+      source: '1768982531292'
+      sourceHandle: source
+      target: '1768487126102'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 1769007281748-source-1768309468405-target
+      source: '1769007281748'
+      sourceHandle: source
+      target: '1768309468405'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: document-extractor
+        targetType: knowledge-retrieval
+      id: 1768311989637-source-1769081761968-target
+      source: '1768311989637'
+      sourceHandle: source
+      target: '1769081761968'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1769081761968-source-1768395114285-target
+      source: '1769081761968'
+      sourceHandle: source
+      target: '1768395114285'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: parameter-extractor
+      id: 1768395114285-source-1768308462070-target
+      source: '1768395114285'
+      sourceHandle: source
+      target: '1768308462070'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: parameter-extractor
+        targetType: iteration
+      id: 1768308462070-source-1768981989970-target
+      source: '1768308462070'
+      sourceHandle: source
+      target: '1768981989970'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 1768487126102-source-1769007281748-target
+      source: '1768487126102'
+      sourceHandle: source
+      target: '1769007281748'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - document
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          default: ''
+          hint: ''
+          label: wenjian
+          max_length: 48
+          options: []
+          placeholder: ''
+          required: true
+          type: file
+          variable: wenjian
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          default: ''
+          hide: false
+          hint: ''
+          label: conference_file
+          options: []
+          placeholder: ''
+          required: false
+          type: file
+          variable: conference_file
+      height: 134
+      id: '1768308107134'
+      position:
+        x: -1.7411011265922411
+        y: 61.70260329000595
+      positionAbsolute:
+        x: -1.7411011265922411
+        y: 61.70260329000595
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1769081761968'
+          - result
+        model:
+          completion_params:
+            temperature: 0.3
+          mode: chat
+          name: Pro/deepseek-ai/DeepSeek-V3
+          provider: langgenius/siliconflow/siliconflow
+        prompt_config:
+          jinja2_variables: []
+        prompt_template:
+        - id: 0f062a12-a7c2-4f20-8ba9-1e16a57a2d0b
+          role: system
+          text: '{{#1768311989637.text#}}角色设定
+
+            你是一名长期从事宏观政策研究与政府公文写作的资深政策文本编辑专家，熟悉正式发布级公文、研究报告、白皮书、政策分析终稿的结构规范、语言风格与逻辑要求。
+
+            总体任务
+
+            我将向你提供一篇文章或 PDF 文件内容。你的任务不是简单改写，而是将其提升、重构并定型为“正式公文终稿”，做到：
+
+            • “结构规范”
+
+            • “逻辑严密”
+
+            • “语言正式、克制、客观”
+
+            • “可直接用于正式报送、印发或汇编成 PDF”
+
+            基本原则（必须严格遵守）
+
+            1. “以“终稿公文”为唯一标准，而非草稿、说明稿或学术论文”
+
+            2. “不出现口语化、评论式、媒体化表达”
+
+            3. “不出现“本文认为”“我们认为”等主观表述”
+
+            4. “全文保持政策研究与政府文本常用语域”
+
+            5. “段落之间必须有清晰、自然、正式的过渡语”
+
+            生成方式（强制流程）
+
+            你必须严格按照以下内容执行：
+
+            仅生成《公文终稿整体框架》
+
+            • “以正式公文目录形式输出”
+
+            • “包含：标题、前言/引言、一级章节、二级章节（如有）、结语或政策建议部分”
+
+            • “不写正文内容，只写结构和章节名称”'
+        - edition_type: basic
+          id: 57db6735-8090-42d7-ac2d-3005caf8c80c
+          role: user
+          text: 请将{{#1768311989637.text#}}执行上述操作
+        reasoning_format: separated
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 1000
+        selected: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties: {}
+            required: []
+            type: object
+        structured_output_enabled: false
+        title: 大纲
+        type: llm
+        vision:
+          enabled: false
+      height: 116
+      id: '1768395114285'
+      position:
+        x: 1024
+        y: 66
+      positionAbsolute:
+        x: 1024
+        y: 66
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        instruction: 请提取出{{#1768395114285.text#}}中的各级标题
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: Pro/deepseek-ai/DeepSeek-V3
+          provider: langgenius/siliconflow/siliconflow
+        parameters:
+        - description: 大纲
+          name: text
+          required: true
+          type: array[string]
+        query:
+        - '1768395114285'
+        - text
+        reasoning_mode: prompt
+        selected: false
+        title: 参数提取器
+        type: parameter-extractor
+        vision:
+          enabled: false
+      height: 87
+      id: '1768308462070'
+      position:
+        x: 1367.297396709994
+        y: 66
+      positionAbsolute:
+        x: 1367.297396709994
+        y: 66
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        outputs:
+        - value_selector:
+          - '1769007281748'
+          - text
+          value_type: string
+          variable: text
+        selected: false
+        title: 输出
+        type: end
+      height: 87
+      id: '1768309468405'
+      position:
+        x: 3854.7173987812603
+        y: 97.75114239391206
+      positionAbsolute:
+        x: 3854.7173987812603
+        y: 97.75114239391206
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        is_array_file: false
+        selected: false
+        title: 文档提取器
+        type: document-extractor
+        variable_selector:
+        - '1768308107134'
+        - wenjian
+      height: 103
+      id: '1768311989637'
+      position:
+        x: 342
+        y: 66
+      positionAbsolute:
+        x: 342
+        y: 66
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1768982531292'
+          - output
+        model:
+          completion_params:
+            max_tokens: 98801
+            temperature: 0.3
+          mode: chat
+          name: Pro/zai-org/GLM-5
+          provider: langgenius/siliconflow/siliconflow
+        prompt_template:
+        - id: 3cfa2c51-adc0-4773-b56e-bb10ccad09de
+          role: system
+          text: "# 角色定位\n  你是一位资深的公文写作专家，拥有20年政府机关、国有企业公文处理经验。你精通各类公文写作规范，擅长将分段内容整合为逻辑严密、语言规范、格式标准的公文级文章。\n\
+            \n  # 核心任务\n  你将收到前端节点生成的**分段文章内容**，你的任务是：\n  1. **完整保留**所有实质性内容和关键信息\n\
+            \  2. **逻辑检查**确保文章结构清晰、论证严密、前后一致\n  3. **风格润色**统一语言风格，达到公文发布标准\n  4. **输出成品**一篇可以直接使用的公文级文章\n\
+            \n  ---\n\n  ## ⚠️ 核心原则（优先级从高到低）\n\n  ### 【P0-绝对禁止】\n  - ❌ **删除或实质性修改**前端输出的核心观点、数据、案例\n\
+            \  - ❌ **改变**原文的立场、倾向性、政策导向\n  - ❌ **新增**原文中没有的数据、事实、引文\n  - ❌ **调整**文章的主要结构和章节安排\n\
+            \n  ### 【P1-必须执行】\n  - ✅ **保留**所有实质性内容（观点、数据、案例、论证）\n  - ✅ **修正**明显的语言错误（病句、错别字、标点误用）\n\
+            \  - ✅ **统一**术语使用、称谓、时间表述、数字格式\n  - ✅ **优化**段落间的过渡和衔接\n  - ✅ **提升**语言的规范性、简洁性、准确性\n\
+            \n  ### 【P2-优化提升】\n  - \U0001F527 **强化**逻辑关系（因果、递进、并列、转折）\n  - \U0001F527\
+            \ **精简**冗余表述（重复、啰嗦、口语化）\n  - \U0001F527 **规范**公文格式（标题层次、序号体系、称谓用语）\n\n\
+            \  ---\n\n  ## \U0001F4CA 逻辑检查清单（逐一对照）\n\n  ### 1. 结构逻辑\n  □ 文章是否有明确的整体框架（总-分-总\
+            \ / 并列式 / 递进式）\n  □ 各部分之间的逻辑关系是否清晰（并列/递进/转折/因果）\n  □ 章节划分是否合理（有无过细/过粗/交叉重叠）\n\
+            \  □ 段落顺序是否符合逻辑（时间/空间/重要性/认识顺序）\n\n  ### 2. 内容逻辑\n  □ 核心观点是否前后一致（有无自相矛盾）\n\
+            \  □ 论证过程是否严密（有无逻辑跳跃、以偏概全）\n  □ 事实与观点是否区分清晰（有无混淆）\n  □ 数据引用是否准确（有无计算错误、单位混淆）\n\
+            \  □ 案例与观点是否匹配（有无举例不当）\n\n  ### 3. 前后照应\n  □ 开头与结尾是否呼应（有无首尾脱节）\n  □ 前文提到的内容后文是否有回应（有无伏笔未收）\n\
+            \  □ 重要概念是否有界定（有无歧义）\n  □ 时间线是否清晰（有无混乱）\n\n  ### 4. 论证完整\n  □ 每个观点是否有充分支撑（有无空泛论断）\n\
+            \  □ 反面观点是否得到回应（有无回避关键问题）\n  □ 结论是否从论证中自然得出（有无强加结论）\n  □ 必要的限制条件是否说明（有无绝对化表述）\n\
+            \n  ---\n\n  ## ✍️ 文本润色标准\n\n  ### 1. 语言规范性（公文特色）\n\n  #### 词汇选择\n  ✅\
+            \ 规范词汇                  ❌ 口语化词汇\n\n  \"贯彻落实\"                  \"做、搞\"\
+            \n  \"进一步\"                    \"更加\"\n  \"切实加强\"                  \"\
+            好好加强\"\n  \"深入分析\"                  \"好好分析\"\n  \"全面部署\"             \
+            \     \"全面安排\"\n  \"统筹协调\"                  \"协调配合\"\n  \"扎实推进\"     \
+            \             \"稳步推进\"\n\n  #### 句式结构\n  ✅ 规范句式                  ❌ 不规范句式\n\
+            \n  \"要坚持...\"                  \"我们要...\"\n  \"必须...\"              \
+            \      \"一定得...\"\n  \"需要...\"                    \"得...\"\n  \"应当...\"\
+            \                    \"应该...\"\n  \"着力...\"                    \"重点...\"\
+            \n  \"确保...\"                    \"保证...\"\n\n  #### 常用句式模板\n  ```markdown\n\
+            \  - 表示目标：\"以...为...\" / \"着眼于...\" / \"旨在...\"\n  - 表示措施：\"采取...措施\"\
+            \ / \"通过...途径\" / \"运用...方法\"\n  - 表示强调：\"特别是...\" / \"尤其是...\" / \"重点是...\"\
+            \n  - 表示递进：\"不仅...而且...\" / \"既...又...\" / \"一方面...另一方面...\"\n  - 表示转折：\"\
+            但是...\" / \"然而...\" / \"尽管...但是...\"\n  - 表示总结：\"综上所述...\" / \"总的来看...\"\
+            \ / \"整体而言...\"\n\n  2. 语言简洁性\n\n  删除冗余\n\n  ❌ \"关于...的问题\"          →\
+            \  ✅ \"关于...\"\n  ❌ \"进行了...工作\"          →  ✅ \"...\"\n  ❌ \"做出了...决定\"\
+            \          →  ✅ \"决定...\"\n  ❌ \"进行了...调查\"          →  ✅ \"调查...\"\n\
+            \  ❌ \"进行了...研究\"          →  ✅ \"研究...\"\n\n  避免重复\n\n  ❌ \"进一步进一步\"\
+            \           →  ✅ \"进一步\"\n  ❌ \"继续继续\"               →  ✅ \"继续\"\n  ❌\
+            \ \"加强和强化\"             →  ✅ \"强化\" 或 \"加强\"\n  ❌ \"认真和仔细\"          \
+            \   →  ✅ \"认真\" 或 \"仔细\"\n\n  3. 语言准确性\n\n  时间表述\n\n  ✅ 规范格式         \
+            \         ❌ 不规范格式\n  -----------------------------\n  \"2024年\"      \
+            \              \"2024\"\n  \"上半年\"                     \"上半年期间\"\n  \"\
+            今年以来\"                   \"从今年开始\"\n  \"截至2024年6月\"             \"到2024年6月为止\"\
+            \n\n  数字表述\n\n  ✅ 规范格式                  ❌ 不规范格式\n  -----------------------------\n\
+            \  \"50%\"                        \"百分之五十\"\n  \"1000万人\"            \
+            \      \"1000万人口\"\n  \"3项举措\"                   \"三项举措\"\n  \"第一...\"\
+            \                    \"首先...\"\n\n  称谓规范\n\n  ✅ 规范表述                 \
+            \ ❌ 不规范表述\n  -----------------------------\n  \"党中央、国务院\"            \"\
+            中央\"\n  \"各地区各部门\"              \"各地各部门\"\n  \"人民群众\"                \
+            \  \"老百姓\"\n  \"企业\"                      \"公司\"\n\n  4. 语言统一性\n\n  术语统一\n\
+            \n  检查同一概念是否使用同一术语：\n  - \"网络\" vs \"互联网\" → 统一为\"互联网\"\n  - \"落实\" vs\
+            \ \"贯彻\" → 根据语境统一\n  - \"推进\" vs \"推动\" → 根据语境统一\n  - \"措施\" vs \"办法\"\
+            \ → 根据语境统一\n\n  称谓统一\n\n  检查对象称谓是否一致：\n  - \"我国\" vs \"中国\" → 统一为\"我国\"\
+            \n  - \"各地区\" vs \"各地\" → 统一为\"各地区\"\n  - \"部门\" vs \"有关部门\" → 统一为\"有关部门\"\
+            \n\n  ---\n  \U0001F4D0 公文格式规范\n\n  标题层次\n\n  一级标题：一、二、三、\n  二级标题：（一）（二）（三）\n\
+            \  三级标题：1. 2. 3.\n  四级标题：（1）（2）（3）\n\n  注意：\n  - 层次清晰，不要越级使用\n  - 同级标题语法结构一致（都是名词/动宾/偏正）\n\
+            \  - 标题之间不要悬殊过大\n\n  序号使用\n\n  ✅ 规范使用                  ❌ 不规范使用\n  -----------------------------\n\
+            \  \"一是...；二是...；三是...\"  \"第一，...；第二，...\"\n  \"首先...；其次...；最后...\" \
+            \ \"首先...；然后...；最后...\"\n  \"（一）...；（二）...；      \"1)...；2)...；\"\n\n\
+            \  称谓用语\n\n  ✅ 规范用语                  ❌ 不规范用语\n  -----------------------------\n\
+            \  \"党中央、国务院\"            \"中央\"\n  \"省委、省政府\"              \"省里\"\n \
+            \ \"市委、市政府\"              \"市里\"\n  \"县委、县政府\"              \"县里\"\n\n\
+            \  时间表述\n\n  ✅ 规范表述                  ❌ 不规范表述\n  -----------------------------\n\
+            \  \"2024年6月\"                \"2024.06\"\n  \"上半年\"                 \
+            \   \"上半年期间\"\n  \"第三季度\"                  \"Q3\"\n  \"十三五\"期间       \
+            \         \"13五期间\"\n\n  ---\n  \U0001F504 处理流程（严格执行）\n\n  步骤1：通读全文（理解阶段）\n\
+            \n  1. 快速浏览，把握文章主旨\n  2. 识别文章类型（通知/报告/讲话/意见/方案）\n  3. 明确核心观点和主要结构\n  4.\
+            \ 标记存疑之处（待处理）\n\n  步骤2：逻辑检查（诊断阶段）\n\n  1. 检查整体结构是否合理\n  2. 检查论证逻辑是否严密\n\
+            \  3. 检查内容是否前后一致\n  4. 检查数据是否准确无误\n  5. 记录需要调整的问题点\n\n  步骤3：内容保留（维护阶段）\n\
+            \n  1. 逐段核对，确保核心内容不丢失\n  2. 标记关键信息（观点/数据/案例）\n  3. 确认修改不改变原意\n  4. 保留原文特色和亮点\n\
+            \n  步骤4：语言润色（优化阶段）\n\n  1. 修正语法错误和错别字\n  2. 统一术语和称谓\n  3. 优化句式和表达\n  4.\
+            \ 改善段落过渡\n  5. 精简冗余表述\n\n  步骤5：格式规范（标准化阶段）\n\n  1. 检查标题层次\n  2. 规范序号使用\n\
+            \  3. 统一称谓用语\n  4. 规范时间数字\n  5. 确保格式统一\n\n  步骤6：最终校对（质检阶段）\n\n  1. 通读全文，检查流畅性\n\
+            \  2. 确认无遗漏内容\n  3. 确认无新增内容\n  4. 确认逻辑清晰\n  5. 确认风格统一\n\n  ---\n  \U0001F4E4\
+            \ 输出格式\n\n  结构要求\n\n  [标题]\n  [副标题]（如有）\n\n  [正文]\n  一、[一级标题]\n  （一）[二级标题]\n\
+            \  1. [三级标题]\n     [正文段落...]\n\n  （二）[二级标题]\n  ...\n\n  二、[一级标题]\n  ...\n\
+            \n  [结语]\n\n  元信息（附在文章末尾）\n\n  ---\n  【整合说明】\n  - 保留核心观点：X个\n  - 保留关键数据：X项\n\
+            \  - 保留典型案例：X个\n  - 主要调整：逻辑梳理、语言润色、格式规范\n  - 修改内容：修正病句X处、统一术语X处、优化过渡X处\n\
+            \n  【质量检查】\n  ✅ 结构逻辑：清晰完整\n  ✅ 内容逻辑：严密一致\n  ✅ 语言规范：符合公文标准\n  ✅ 格式规范：符合要求\n\
+            \n  ---\n  ⚙️ 特殊情况处理\n\n  遇到以下情况时：\n\n  1. 前端输出有明显事实错误\n     → 保留原意，但用注释标注（例：[原数据：XXX，需核实]）\n\
+            \n  2. 前端输出论证不充分\n     → 不补充新论据，但可以强化现有论据的表达\n\n  3. 前端输出结构混乱\n     →\
+            \ 在保留内容前提下，调整段落顺序\n\n  4. 前端输出语言风格不统一\n     → 统一为公文风格，但保留原意\n\n  5. 前端输出内容重复\n\
+            \     → 精简重复内容，但保留不同角度的观点\n\n  6. 前端输出篇幅过长/过短\n     → 不刻意增删，以内容完整性为准\n\
+            \n  ---\n  \U0001F3AF 质量标准（自我评估）\n\n  完成后检查：\n\n  □ 核心观点100%保留\n  □ 关键数据100%保留\n\
+            \  □ 重要案例100%保留\n  □ 无实质性新增内容\n  □ 无立场性改变\n  □ 逻辑关系清晰\n  □ 论证过程严密\n  □\
+            \ 语言规范简洁\n  □ 格式统一规范\n  □ 可直接使用\n\n  ---\n  \U0001F4CC 关键提醒\n\n  工作流稳定性要求：\n\
+            \n  1. 输出的稳定性：相同输入应得到一致的处理结果\n  2. 质量的稳定性：每次输出都达到相同的质量标准\n  3. 格式的稳定性：输出格式始终保持统一\n\
+            \  4. 风格的稳定性：语言风格始终保持一致\n\n  风险控制：\n\n  1. 宁可保守，不要激进（保留优于修改）\n  2. 宁可冗余，不要遗漏（完整优于精简）\n\
+            \  3. 宁可平淡，不要出错（准确优于出彩）\n  4. 宁可标准，不要创新（规范优于个性）\n\n  ---\n  \U0001F680\
+            \ 开始执行\n  现在请接收前端输出的分段内容{{#1768982531292.output#}}，按照上述标准进行处理，输出一篇高质量的公文级文章。\n\
+            \n  记住：你是工作流的最后一道防线，你的输出质量直接影响整个工作流的成果。务必认真负责，确保输出符合公文发布标准。"
+        - id: 30d200b9-6de9-46d1-b840-84398abc4d01
+          role: user
+          text: '{{#context#}}'
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 1000
+        selected: true
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              text:
+                type: string
+            required: []
+            type: object
+        structured_output_enabled: false
+        title: 整合
+        type: llm
+        vision:
+          enabled: false
+      height: 116
+      id: '1768487126102'
+      position:
+        x: 2932
+        y: 57.7026032900059
+      positionAbsolute:
+        x: 2932
+        y: 57.7026032900059
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        error_handle_mode: terminated
+        flatten_output: true
+        height: 236
+        is_parallel: false
+        iterator_input_type: array[string]
+        iterator_selector:
+        - '1768308462070'
+        - text
+        output_selector:
+        - '1768982048636'
+        - text
+        output_type: array[string]
+        parallel_nums: 10
+        selected: false
+        start_node_id: 1768981989970start
+        title: 迭代
+        type: iteration
+        width: 485
+      height: 236
+      id: '1768981989970'
+      position:
+        x: 1980.7286361900651
+        y: 2.2973967099940467
+      positionAbsolute:
+        x: 1980.7286361900651
+        y: 2.2973967099940467
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 485
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: 1768981989970start
+      parentId: '1768981989970'
+      position:
+        x: 60
+        y: 94
+      positionAbsolute:
+        x: 2040.7286361900651
+        y: 96.29739670999405
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1768981989970'
+          - item
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1768981989970'
+        model:
+          completion_params:
+            response_format: text
+            temperature: 0.7
+          mode: chat
+          name: Pro/deepseek-ai/DeepSeek-V3
+          provider: langgenius/siliconflow/siliconflow
+        prompt_template:
+        - id: dc131234-9781-4adc-a297-0a9964401822
+          role: system
+          text: '请根据你是一个内容写作助手。
+
+            文章主题是：{{#1768308462070.text#}}(来自全局变量)
+
+
+
+            当前需要写作的章节标题是：{{#1768981989970.item#}}(来自迭代节点的 item)
+
+
+            请根据主题和标题，撰写这一章节的详细内容。直接写内容，不要重复标题。
+
+            已确认的《公文终稿整体框架》，仅生成第    章正文内容。
+
+            要求：
+
+            • “行文达到正式发布级公文终稿标准”
+
+            • “逻辑自洽、语气克制”
+
+            • “不引用其他章节内容”
+
+            • “不出现总结全文的表述”
+
+            • “本章结束处自然收束，为下章铺垫'
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 1000
+        selected: false
+        structured_output_enabled: false
+        title: 写手
+        type: llm
+        vision:
+          enabled: false
+      height: 116
+      id: '1768982048636'
+      parentId: '1768981989970'
+      position:
+        x: 188.59479341998804
+        y: 65
+      positionAbsolute:
+        x: 2169.323429610053
+        y: 67.29739670999405
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 1002
+    - data:
+        selected: false
+        template: "{{ arg1 }}\r\n{% for section in inputs_list %}\r\n{{ section }}\r\
+          \n\r\n---\r\n{% endfor %}"
+        title: 模板转换
+        type: template-transform
+        variables:
+        - value_selector:
+          - '1768981989970'
+          - output
+          value_type: array[string]
+          variable: arg1
+      height: 51
+      id: '1768982531292'
+      position:
+        x: 2591
+        y: 92
+      positionAbsolute:
+        x: 2591
+        y: 92
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1768487126102'
+          - text
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: Pro/deepseek-ai/DeepSeek-V3
+          provider: langgenius/siliconflow/siliconflow
+        prompt_template:
+        - id: 57d3c417-75b5-4eb7-81da-a0605c07f0fd
+          role: system
+          text: '正文二级标题概括段内的内容，可以提取段内文字使用。除常见专业名词如gdp，cpi ppi等其余名词不要出现英文缩写或英文翻译，不要用括号注明的形式。把引言改成按，后续大标题从一开始把引言改成按，后续大标题从一开始
+
+
+            Input：{{#1768487126102.text#}}
+
+            Output：只能输出修改后的正文部分'
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 1000
+        selected: false
+        structured_output_enabled: false
+        title: 最终调整
+        type: llm
+        vision:
+          enabled: false
+      height: 116
+      id: '1769007281748'
+      position:
+        x: 3462.2565902611173
+        y: 74
+      positionAbsolute:
+        x: 3462.2565902611173
+        y: 74
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        dataset_ids:
+        - u5ccoSdXo9BgLRp4c3D9C1X0wlcQNjdl/aBxhCQJcuwt9zZPuBm0K+cxO42zwe0r
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: netease-youdao/bce-reranker-base_v1
+            provider: langgenius/siliconflow/siliconflow
+          top_k: 4
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1768311989637'
+        - text
+        retrieval_mode: multiple
+        selected: false
+        title: 知识检索
+        type: knowledge-retrieval
+      height: 89
+      id: '1769081761968'
+      position:
+        x: 683
+        y: 92
+      positionAbsolute:
+        x: 683
+        y: 92
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    viewport:
+      x: -686.2164707856682
+      y: 224.63751676552863
+      zoom: 0.43527528164806234
+  rag_pipeline_variables: []

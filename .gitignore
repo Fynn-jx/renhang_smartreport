@@ -1,0 +1,100 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 日志
+logs/
+*.log
+server.log
+
+# 数据库
+*.db
+*.sqlite
+*.sqlite3
+
+# 文件存储
+storage/uploads/*
+storage/thumbnails/*
+storage/cache/*
+!storage/uploads/.gitkeep
+!storage/thumbnails/.gitkeep
+!storage/cache/.gitkeep
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Alembic
+alembic/versions/*.py
+!alembic/versions/.gitkeep
+
+# 临时文件
+*.tmp
+*.bak
+*.swp
+*~
+*.bat
+test_*.py
+test_*.js
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# 文档和指南（可选，根据需要保留）
+# MIGRATION_COMPLETE.md
+# OPENROUTER_API_GUIDE.md
+# PDF_PROCESSING_MIGRATION_GUIDE.md
