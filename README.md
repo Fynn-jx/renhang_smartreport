@@ -52,86 +52,156 @@
 ├── backend/                    # 后端服务
 │   ├── api/                    # API 路由
 │   │   ├── endpoints/          # 各功能模块端点
-│   │   │   ├── documents.py    # 文档管理
-│   │   │   ├── tasks.py        # 任务管理
-│   │   │   ├── workflows.py    # 工作流
-│   │   │   ├── document_translation.py  # 公文翻译
-│   │   │   ├── image_translation.py    # 图片转译
-│   │   │   ├── knowledge.py    # 知识库
-│   │   │   └── storage.py      # 文件存储
+│   │   │   ├── documents.py           # 文档管理
+│   │   │   ├── document_translation.py # 公文翻译
+│   │   │   ├── image_translation.py   # 图片转译
+│   │   │   ├── knowledge.py           # 知识库
+│   │   │   ├── storage.py             # 文件存储
+│   │   │   ├── tasks.py               # 任务管理
+│   │   │   └── workflows.py           # 工作流
 │   │   ├── v1/                 # API v1 路由聚合
 │   │   └── dependencies.py     # 依赖注入
 │   ├── core/                   # 核心配置
 │   │   ├── config.py           # 应用配置（环境变量）
 │   │   ├── database.py         # 数据库连接
+│   │   ├── redis.py            # Redis 连接
 │   │   ├── security.py         # 安全相关
 │   │   └── constants.py        # 常量定义
 │   ├── models/                 # SQLAlchemy 数据模型
 │   │   ├── base.py             # 基类
 │   │   ├── document.py         # 文档模型
-│   │   ├── task.py             # 任务模型
-│   │   ├── user.py             # 用户模型
+│   │   ├── document_translation.py  # 翻译记录
+│   │   ├── image_translation.py     # 图片转译
 │   │   ├── tag.py              # 标签模型
-│   │   ├── document_translation.py    # 翻译记录
-│   │   └── image_translation.py       # 图片转译
+│   │   ├── task.py             # 任务模型
+│   │   └── user.py             # 用户模型
 │   ├── schemas/                # Pydantic 数据验证模式
+│   │   ├── common.py           # 通用响应
 │   │   ├── document.py         # 文档相关
+│   │   ├── document_translation.py  # 翻译相关
+│   │   ├── image_translation.py     # 图片转译相关
 │   │   ├── task.py             # 任务相关
-│   │   ├── user.py             # 用户相关
-│   │   └── common.py           # 通用响应
+│   │   └── user.py             # 用户相关
 │   ├── services/               # 业务逻辑服务
-│   │   ├── document_service.py         # 文档管理
-│   │   ├── file_service.py             # 文件处理
 │   │   ├── academic_to_official_service.py  # 学术转公文
 │   │   ├── country_research_service.py     # 国别研究
-│   │   ├── quarterly_report_service.py    # 季度报告
-│   │   ├── translation_workflow_service.py # 翻译工作流
+│   │   ├── document_service.py             # 文档管理
 │   │   ├── document_translation_service.py # 公文翻译
-│   │   └── image_translation_service.py    # 图片转译
+│   │   ├── file_service.py                   # 文件处理
+│   │   ├── fitz_extractor.py                # PDF 提取（PyMuPDF）
+│   │   ├── image_translation_service.py     # 图片转译
+│   │   ├── quarterly_report_service.py      # 季度报告
+│   │   ├── translation_workflow_service.py  # 翻译工作流
+│   │   └── web_crawler_service.py           # 网页爬虫
 │   ├── utils/                  # 工具函数
-│   │   ├── pdf_extractor.py    # PDF 内容提取
-│   │   └── markdown_to_word.py # Markdown 转 Word
+│   │   ├── markdown_to_word.py # Markdown 转 Word
+│   │   └── pdf_extractor.py    # PDF 内容提取
+│   ├── workflows/              # 工作流编排
+│   │   └── academic_workflow.py # 学术转公文工作流
 │   ├── configs/                # 工作流配置
-│   │   └── country_data_sources.py  # 国别研究数据源
+│   │   ├── country_data_sources.py           # 国别研究数据源
+│   │   ├── country_data_sources_example.py  # 数据源示例
+│   │   ├── countries_config_example.json    # 国家配置示例
+│   │   └── README_COUNTRY_RESEARCH.md       # 国别研究文档
 │   ├── storage/                # 文件存储目录
 │   │   ├── uploads/            # 上传文件
+│   │   │   ├── document/       # 文档文件
+│   │   │   ├── image/          # 图片文件
+│   │   │   └── pdf/            # PDF 文件
 │   │   ├── thumbnails/         # 缩略图
 │   │   └── cache/              # 缓存
 │   ├── tasks/                  # Celery 任务
+│   ├── tests/                  # 测试文件
+│   ├── vector_store/           # 向量存储
+│   ├── scripts/                # 脚本工具
+│   │   └── init_db.py          # 数据库初始化
 │   ├── alembic/                # 数据库迁移
+│   │   └── versions/           # 迁移版本
 │   ├── main.py                 # 应用入口
-│   └── requirements.txt        # Python 依赖
+│   ├── alembic.ini             # Alembic 配置
+│   ├── requirements.txt        # Python 依赖
+│   ├── pyproject.toml          # 项目配置
+│   ├── .env.example            # 环境变量示例
+│   ├── README.md               # 后端文档
+│   └── IMPLEMENTATION_REPORT.md # 实现报告
 │
 ├── frontend/                   # 前端应用
 │   ├── src/
-│   │   ├── app/
-│   │   │   ├── App.tsx         # 主应用组件
-│   │   │   ├── components/
-│   │   │   │   ├── layout/     # 布局组件
-│   │   │   │   │   ├── Sidebar.tsx        # 侧边栏
-│   │   │   │   │   └── DataSourcePanel.tsx  # 数据源面板
-│   │   │   │   ├── features/   # 功能模块
-│   │   │   │   │   ├── library/       # 文献库
-│   │   │   │   │   ├── research/      # 国别研究
-│   │   │   │   │   └── image/         # 图片转译
-│   │   │   │   └── ui/          # UI 组件库 (shadcn/ui)
-│   │   │   ├── config/         # 前端配置
-│   │   │   └── types/          # TypeScript 类型定义
-│   │   ├── api/
+│   │   ├── api/                # API 客户端
 │   │   │   ├── client.ts       # API 客户端封装
 │   │   │   ├── types.ts        # API 数据类型
 │   │   │   └── index.ts        # API 导出
-│   │   ├── main.tsx            # 前端入口
-│   │   └── vite-env.d.ts       # Vite 类型声明
+│   │   ├── app/                # 应用组件
+│   │   │   ├── App.tsx         # 主应用组件
+│   │   │   ├── components/     # 组件目录
+│   │   │   │   ├── features/   # 功能模块
+│   │   │   │   │   ├── image/  # 图片转译
+│   │   │   │   │   ├── library/# 文献库
+│   │   │   │   │   │   ├── components/
+│   │   │   │   │   │   │   ├── Badges.tsx
+│   │   │   │   │   │   │   ├── ConfigModal.tsx
+│   │   │   │   │   │   │   └── index.ts
+│   │   │   │   │   │   └── index.tsx
+│   │   │   │   │   ├── quarterly/# 季度报告
+│   │   │   │   │   │   ├── QuarterlyReportModule.tsx
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   └── research/# 国别研究
+│   │   │   │   │       └── index.tsx
+│   │   │   │   ├── figma/     # Figma 设计相关
+│   │   │   │   │   └── ImageWithFallback.tsx
+│   │   │   │   ├── layout/    # 布局组件
+│   │   │   │   │   ├── DataSourcePanel.tsx
+│   │   │   │   │   └── Sidebar.tsx
+│   │   │   │   ├── ui/        # UI 组件库 (shadcn/ui)
+│   │   │   │   │   └── [60+ UI 组件]
+│   │   │   │   ├── DataSourcePanel.tsx  # 数据源面板
+│   │   │   │   ├── HistoryPanel.tsx     # 历史记录面板
+│   │   │   │   ├── ImageModule.tsx      # 图片转译模块
+│   │   │   │   ├── LibraryModule.tsx    # 文献库模块
+│   │   │   │   ├── ResearchModule.tsx   # 研究模块
+│   │   │   │   └── Sidebar.tsx          # 侧边栏
+│   │   │   ├── config/      # 前端配置
+│   │   │   │   ├── index.ts
+│   │   │   │   └── library.config.ts
+│   │   │   └── types/       # TypeScript 类型定义
+│   │   │       ├── document.ts
+│   │   │       └── index.ts
+│   │   ├── assets/          # 静态资源
+│   │   ├── styles/          # 样式文件
+│   │   │   ├── fonts.css
+│   │   │   ├── index.css
+│   │   │   ├── tailwind.css
+│   │   │   └── theme.css
+│   │   ├── main.tsx         # 前端入口
+│   │   └── vite-env.d.ts    # Vite 类型声明
+│   ├── docs/                # 前端文档
+│   │   └── FEATURE_DOCS.md
+│   ├── guidelines/          # 开发指南
+│   │   └── Guidelines.md
 │   ├── index.html
 │   ├── package.json
-│   └── vite.config.ts
+│   ├── package-lock.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   ├── vite.config.ts
+│   ├── postcss.config.mjs
+│   ├── ATTRIBUTIONS.md      # 组件归因
+│   └── README.md            # 前端文档
 │
-├── 公文翻译 .yml               # 公文翻译工作流配置
-├── 国别研究 .yml               # 国别研究工作流配置
-├── 季报生成 .yml               # 季度报告工作流配置
-├── 学术报告转公文.yml          # 学术转公文工作流配置
-└── README.md                   # 本文档
+├── workflow_reference_from_dify/  # 工作流参考配置
+│   ├── 公文翻译 .yml
+│   ├── 国别研究 .yml
+│   ├── 季报生成 .yml
+│   └── 学术报告转公文.yml
+│
+├── .gitignore                # Git 忽略文件
+├── MIGRATION_COMPLETE.md     # 迁移完成文档
+├── OPENROUTER_API_GUIDE.md   # OpenRouter API 指南
+├── PDF_PROCESSING_MIGRATION_GUIDE.md  # PDF 处理迁移指南
+├── README.md                 # 本文档
+├── frontend-example-async-translation.js    # 前端异步翻译示例
+├── frontend-example-document-translation.js # 前端文档翻译示例
+└── test_integration.py       # 集成测试
 ```
 
 ---
@@ -562,7 +632,7 @@ DELETE /tasks/{task_id}  # 取消任务
 
 **核心功能**:
 - 文件上传与存储（支持 PDF、DOCX、TXT、Markdown、图片）
-- PDF 内容自动提取（使用 PyPDF2）
+- PDF 内容自动提取（使用 PyMuPDF/fitz）
 - 文件去重（基于 SHA256 哈希）
 - 缩略图自动生成
 - 元数据管理（作者、主题、关键词）
@@ -592,7 +662,7 @@ class Document(Base, UUIDMixin, TimestampMixin):
 
 #### 前端实现
 
-**文件**: `frontend/src/app/components/LibraryModule.tsx`
+**文件**: `frontend/src/app/components/features/library/index.tsx`
 
 **功能**:
 - 文档列表展示（卡片视图）
@@ -607,7 +677,9 @@ class Document(Base, UUIDMixin, TimestampMixin):
 
 #### 后端实现
 
-**文件**: `backend/services/academic_to_official_service.py`
+**文件**:
+- `backend/services/academic_to_official_service.py` - 核心服务
+- `backend/workflows/academic_workflow.py` - 工作流编排
 
 **工作流阶段**:
 
@@ -660,9 +732,9 @@ async def process_academic_to_official(file_path, progress_callback, db):
     yield update  # 返回给 SSE
 ```
 
-#### 前端实现
+#### ��端实现
 
-**文件**: `frontend/src/app/components/ResearchModule.tsx`
+**文件**: `frontend/src/app/components/features/research/index.tsx`
 
 **功能**:
 - 文件上传
@@ -836,20 +908,12 @@ const pollStatus = async (translationId) => {
    - 验证图片格式
    - 检查文件大小
 
-2. **OCR 提取**
-   - 使用 PaddleOCR 或 Tesseract
-   - 提取图片中的文字
+2. **图片转译**
+   - 使用 OpenRouter API 进行图片文字识别和翻译
+   - 保持图片布局和格式
 
-3. **文本翻译**
-   - 调用 DeepSeek API
-   - 翻译提取的文字
-
-4. **图片重建**
-   - 将翻译文字覆盖到原图片
-   - 保持原始布局
-
-5. **结果输出**
-   - 生成转译后的图片
+3. **结果输出**
+   - 返回转译后的图片
    - 提供预览和下载
 
 ---
@@ -966,14 +1030,15 @@ App
 │   ├── 国别深度研究
 │   ├── 季度报告生成
 │   ├── 公文翻译
-│   ├── 图片转译
+│   ├─�� 图片转译
 │   └── 历史记录
 ├── DataSourcePanel (数据源面板)
 ├── HistoryPanel (历史记录面板)
-└── 功能模块
-    ├── LibraryModule (文献库)
-    ├── ResearchModule (国别研究)
-    └── ImageModule (图片转译)
+└── 功能模块 (features/)
+    ├── library (文献库)
+    ├── research (国别研究)
+    ├── quarterly (季度报告)
+    └── image (图片转译)
 ```
 
 ### 状态管理
