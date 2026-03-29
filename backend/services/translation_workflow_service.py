@@ -215,43 +215,64 @@ class TranslationWorkflowService:
                 data={"total_paragraphs": total_paragraphs}
             )
 
-            translated_paragraphs = []
+            translated_paragraphs = [None] * total_paragraphs  # 预分配数组保持顺序
 
-            # 逐段翻译
-            for i, paragraph in enumerate(paragraphs_list, 1):
-                para_progress = 5.0 + (i / total_paragraphs) * 90.0  # 5% - 95%
+            # 并发翻译配置
+            BATCH_SIZE = 5  # 每批并发翻译5个段落
+            total_batches = (total_paragraphs + BATCH_SIZE - 1) // BATCH_SIZE
 
-                # 发送段落开始消息
+            import asyncio
+
+            # 分批并发翻译
+            for batch_num in range(total_batches):
+                start_idx = batch_num * BATCH_SIZE
+                end_idx = min(start_idx + BATCH_SIZE, total_paragraphs)
+                batch_paragraphs = paragraphs_list[start_idx:end_idx]
+
+                # 发送批次开始消息
+                batch_progress = 5.0 + (start_idx / total_paragraphs) * 90.0
                 yield TranslationProgressUpdate(
                     stage=TranslationStage.CHUNK_PROCESSING,
                     stage_name="chunk_processing",
-                    progress=para_progress,
-                    message=f"正在翻译第 {i}/{total_paragraphs} 段...",
-                    data={"current_paragraph": i, "total_paragraphs": total_paragraphs, "paragraph_preview": paragraph[:100]}
+                    progress=batch_progress,
+                    message=f"正在翻译第 {start_idx + 1}-{end_idx} 段（批次 {batch_num + 1}/{total_batches}）...",
+                    data={"batch_start": start_idx + 1, "batch_end": end_idx, "total_batches": total_batches}
                 )
 
-                try:
-                    # 翻译单个段落
-                    translated_para = await self._translate_single_paragraph(
-                        paragraph,
-                        paragraph_number=i
-                    )
-                    translated_paragraphs.append(translated_para)
-                    logger.info(f"[翻译工作流] 第 {i}/{total_paragraphs} 段翻译完成")
+                # 并发翻译当前批次
+                tasks = [
+                    self._translate_single_paragraph(para, para_num)
+                    for para_num, para in enumerate(batch_paragraphs, start_idx + 1)
+                ]
 
-                    # 实时发送已翻译的段落
-                    yield TranslationProgressUpdate(
-                        stage=TranslationStage.CHUNK_PROCESSING,
-                        stage_name="chunk_processing",
-                        progress=para_progress,
-                        message=f"第 {i}/{total_paragraphs} 段翻译完成",
-                        data={"translated_paragraph": translated_para, "paragraph_number": i}
-                    )
+                try:
+                    # 等待当前批次完成
+                    batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                    # 保存结果（保持顺序）
+                    for i, result in enumerate(batch_results, start_idx):
+                        if isinstance(result, Exception):
+                            logger.error(f"[翻译工作流] 第 {i + 1} 段翻译失败: {result}")
+                            translated_paragraphs[i] = f"\n\n[翻译失败：第 {i + 1} 段]\n\n{paragraphs_list[i]}\n\n"
+                        else:
+                            translated_paragraphs[i] = result
+                            logger.info(f"[翻译工作流] 第 {i + 1}/{total_paragraphs} 段翻译完成")
+
+                            # 实时发送已翻译的段落
+                            yield TranslationProgressUpdate(
+                                stage=TranslationStage.CHUNK_PROCESSING,
+                                stage_name="chunk_processing",
+                                progress=5.0 + ((i + 1) / total_paragraphs) * 90.0,
+                                message=f"第 {i + 1}/{total_paragraphs} 段翻译完成",
+                                data={"translated_paragraph": result, "paragraph_number": i + 1}
+                            )
 
                 except Exception as e:
-                    logger.error(f"[翻译工作流] 第 {i}/{total_paragraphs} 段翻译失败: {e}")
+                    logger.error(f"[翻译工作流] 批次 {batch_num + 1} 翻译失败: {e}")
                     # 失败时保留原文
-                    translated_paragraphs.append(f"\n\n[翻译失败：第 {i} 段]\n\n{paragraph}\n\n")
+                    for i in range(start_idx, end_idx):
+                        if translated_paragraphs[i] is None:
+                            translated_paragraphs[i] = f"\n\n[翻译失败：第 {i + 1} 段]\n\n{paragraphs_list[i]}\n\n"
 
             # 合并所有段落
             translated_text = "\n\n".join(translated_paragraphs)
@@ -386,7 +407,11 @@ class TranslationWorkflowService:
         filename: str,
     ) -> str:
         """
-        从文档中提取文本（使用 PyMuPDF）
+        从文档中提取文本
+
+        支持的格式：
+        - PDF: 使用 PyMuPDF 提取
+        - TXT/Markdown: 直接使用文本内容
 
         Args:
             document_bytes: 文档字节内容
@@ -395,28 +420,55 @@ class TranslationWorkflowService:
         Returns:
             提取并清理后的 Markdown 文本
         """
-        # 使用 PyMuPDF (fitz) 提取 PDF
-        if fitz_extractor is None:
-            raise EnvironmentError(
-                "PyMuPDF 不可用，请先安装 PyMuPDF:\n"
-                "运行: pip install PyMuPDF"
+        # 检查文件扩展��
+        file_ext = Path(filename).suffix.lower()
+
+        # 纯文本文件（.txt, .md）直接使用
+        if file_ext in ['.txt', '.md', '.markdown']:
+            logger.info(f"[文档提取] 检测到纯文本文件: {filename}")
+            try:
+                text_content = document_bytes.decode('utf-8')
+            except UnicodeDecodeError:
+                # 尝试其他编码
+                text_content = document_bytes.decode('gbk')
+
+            logger.info(f"[文档提取] 纯文本提取完成，长度: {len(text_content)} 字符")
+            return text_content.strip()
+
+        # PDF 文件使用 PyMuPDF 提取
+        if file_ext == '.pdf':
+            if fitz_extractor is None:
+                raise EnvironmentError(
+                    "PyMuPDF 不可用，请先安装 PyMuPDF:\n"
+                    "运行: pip install PyMuPDF"
+                )
+
+            logger.info(f"[文档提取] 检测到 PDF 文件: {filename}")
+
+            # 调用 PyMuPDF 提取 PDF 为 Markdown
+            extraction_result = fitz_extractor.extract_from_bytes(
+                document_bytes,
+                extract_images=False,
+                extract_tables=True
             )
 
-        # 调用 PyMuPDF 提取 PDF 为 Markdown
-        extraction_result = fitz_extractor.extract_from_bytes(
-            document_bytes,
-            extract_images=False,
-            extract_tables=True
-        )
+            markdown_content = extraction_result["content"]
 
-        markdown_content = extraction_result["content"]
+            # 清理内容：移除参考文献部分
+            cleaned_content = self._clean_markdown_content(markdown_content)
 
-        # 清理内容：移除参考文献部分
-        cleaned_content = self._clean_markdown_content(markdown_content)
+            logger.info(f"[PyMuPDF] PDF 提取完成，原文长度: {len(markdown_content)}, 清理后长度: {len(cleaned_content)}")
 
-        logger.info(f"[PyMuPDF] 文档提取完成，原文长度: {len(markdown_content)}, 清理后长度: {len(cleaned_content)}")
+            return cleaned_content
 
-        return cleaned_content
+        # 其他格式尝试作为纯文本处理
+        logger.warning(f"[文档提取] 未知文件格式: {file_ext}，尝试作为纯文本处理")
+        try:
+            text_content = document_bytes.decode('utf-8')
+            logger.info(f"[文档提取] 文本提取完成，长度: {len(text_content)} 字符")
+            return text_content.strip()
+        except Exception as e:
+            raise ValueError(f"无法处理文件格式: {file_ext}, 错误: {e}")
 
     def _clean_markdown_content(self, markdown: str) -> str:
         """
@@ -480,21 +532,55 @@ class TranslationWorkflowService:
 
     def _is_header_footer(self, line: str) -> bool:
         """检测是否是页眉或页脚"""
-        # 规则1：包含@符号（邮箱）
+        line_lower = line.lower().strip()
+        line_len = len(line.strip())
+
+        # 规则1：版权声明
+        if "©" in line or "copyright" in line_lower or "international monetary fund" in line_lower:
+            return True
+
+        # 规则2：包含@符号（邮箱）
         if "@" in line:
             return True
 
-        # 规则2：短文本且包含特定关键词
-        short_keywords = ["imf", "world bank", "working paper", "wp/", "sip/"]
-        if len(line) < 50 and any(kw in line.lower() for kw in short_keywords):
+        # 规则3：年份列表（如：2004/05 2006/07）
+        if line_len < 100 and len([w for w in line.split() if w.count('/') == 1]) >= 3:
             return True
 
-        # 规则3：纯数字或日期格式
-        if line.strip().isdigit() or len(line.strip()) <= 4:
+        # 规则4：短文本且包含特定关键词
+        short_keywords = [
+            "imf", "world bank", "working paper", "wp/", "sip/",
+            "country report", "selected issues", "african department",
+            "prepared by", "authorized for distribution"
+        ]
+        if line_len < 80 and any(kw in line_lower for kw in short_keywords):
             return True
 
-        # 规则4：包含大量符号的页眉
-        if len(line) < 80 and line.count('|') >= 3:
+        # 规则5：图表轴标签（如：percent of GDP, Primary Balance）
+        axis_labels = ["percent of", "percent of gdp", "primary balance", "overall balance"]
+        if line_len < 50 and any(label in line_lower for label in axis_labels):
+            return True
+
+        # 规则6：纯数字或日期格式
+        if line.strip().isdigit() or line_len <= 4:
+            return True
+
+        # 规则7：脚注编号（如：2 IMF 2018, 3 S&P, Fitch）
+        if line_len < 100 and line.strip()[0].isdigit() and len(line.split()) <= 15:
+            # 可能是脚注，但保留有意义的完整句子
+            if '.' in line and not line.endswith('.'):
+                return True
+
+        # 规则8：来源标注（如：Source: South African Authorities' data）
+        if line_lower.startswith("source:") or "source:" in line_lower:
+            return True
+
+        # 规则9：作者邮箱行
+        if "author's e-mail" in line_lower or "author's email" in line_lower:
+            return True
+
+        # 规则10：包含大量符号的页眉
+        if line_len < 80 and line.count('|') >= 3:
             return True
 
         return False
@@ -564,30 +650,64 @@ class TranslationWorkflowService:
     def _split_into_paragraphs(self, text: str) -> List[str]:
         """将文本分割成单独的段落
 
-        按照以下规则分割：
-        1. 空行分割
-        2. 识别标题（## 开头）
-        3. 保留段落完整性
+        改进的分割策略：
+        1. 按换行符分割���行
+        2. 识别标题（## 开头）单独作为一段
+        3. 连续的非空行合并为段落（由空行分隔）
+        4. 过滤掉过短的行（可能是图表标签）
+        5. 控制段落最大长度（避免单个段落过长）
 
         Returns:
             List[str]: 段落列表
         """
-        # 按空行分割
-        raw_paragraphs = text.split('\n\n')
-
+        lines = text.split('\n')
         paragraphs = []
-        for para in raw_paragraphs:
-            para = para.strip()
-            if not para:
+        current_paragraph = []
+
+        for line in lines:
+            line_stripped = line.strip()
+
+            # 空行：结束当前段落
+            if not line_stripped:
+                if current_paragraph:
+                    paragraph = ' '.join(current_paragraph).strip()
+                    if paragraph and len(paragraph) > 20:  # 过滤太短的段落
+                        paragraphs.append(paragraph)
+                    current_paragraph = []
                 continue
 
-            # 检查是否是标题（Markdown格式）
-            if para.startswith('##'):
+            # 检测标题（Markdown格式）
+            if line_stripped.startswith('##'):
+                # 先保存之前的段落
+                if current_paragraph:
+                    paragraph = ' '.join(current_paragraph).strip()
+                    if paragraph and len(paragraph) > 20:
+                        paragraphs.append(paragraph)
+                    current_paragraph = []
+
                 # 标题单独作为一段
-                paragraphs.append(para)
-            else:
-                # 普通段落
-                paragraphs.append(para)
+                paragraphs.append(line_stripped)
+                continue
+
+            # 检测可能的图表标签（过短且包含数字的行）
+            if len(line_stripped) < 30 and line_stripped.replace('/', '').replace('.', '').replace('-', '').replace(' ', '').isdigit():
+                # 跳过纯数字/日期行
+                continue
+
+            # 添加到当前段落
+            current_paragraph.append(line_stripped)
+
+            # 如果段落过长，切分
+            if len(' '.join(current_paragraph)) > 2000:
+                paragraph = ' '.join(current_paragraph).strip()
+                paragraphs.append(paragraph)
+                current_paragraph = []
+
+        # 处理最后一个段落
+        if current_paragraph:
+            paragraph = ' '.join(current_paragraph).strip()
+            if paragraph and len(paragraph) > 20:
+                paragraphs.append(paragraph)
 
         logger.info(f"[翻译工作流] 文本分割为 {len(paragraphs)} 个段落")
         return paragraphs
@@ -605,20 +725,21 @@ class TranslationWorkflowService:
         # 构建单段翻译提示词
         prompt = f"""请将以下段落翻译为简体中文，严格按照中英对照格式输出：
 
-【段落编号】{paragraph_number}
-
-**中文译文**：（在此输出中文翻译）
+**中文译文**：
+（在此输出中文翻译）
 
 **英文原文**：
 {paragraph}
 
 ---
 
-【严格要求】
-• 必须翻译完整段落，不要省略任何内容
-• 不要输出"后续内容"、"此处仅展示"等说明文字
-• 保持原文的格式和标点
-• 直接输出，不要用代码块包裹
+【翻译要求】
+1. 准确翻译原文含义，符合专业公文表达习惯
+2. 专业术语首次出现时采用"中文译名（英文全称）"格式
+3. 必须翻译完整段落，不要省略任何内容
+4. 不要输出"段落编号"、"后续内容"等说明文字
+5. 保持原文的格式和标点符号
+6. 直接输出Markdown格式，不要用代码块包裹
 """
 
         try:

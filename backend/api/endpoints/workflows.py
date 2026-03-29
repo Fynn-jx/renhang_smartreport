@@ -43,6 +43,85 @@ from configs.country_data_sources import CountryDataSourceRegistry
 router = APIRouter()
 
 
+@router.post("/translation/extract")
+async def extract_document_content(
+    file: UploadFile = File(None, description="文档文件（PDF/TXT）"),
+    document_id: str = Form(None, description="已上传文档的ID（与file二选一）"),
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    提取文档内容（用于翻译前的预览）
+
+    返回PDF/TXT文件的原始文本内容，用户可以编辑和清理后再翻译。
+
+    Returns:
+        {
+            "content": "提取的文本内容",
+            "metadata": {...},
+            "stats": {"paragraphs": 10, "chars": 5000}
+        }
+    """
+    from services.translation_workflow_service import TranslationWorkflowService
+
+    translation_service = TranslationWorkflowService()
+
+    # 获取文件内容
+    if document_id:
+        # 从数据库查询文档
+        result = await db.execute(
+            select(Document).where(
+                Document.id == document_id,
+                Document.owner_id == user_id
+            )
+        )
+        doc = result.scalar_one_or_none()
+        if not doc:
+            raise HTTPException(status_code=404, detail="文档不存在或无权访问")
+
+        file_path = file_service.get_full_path(doc.file_path)
+        with open(file_path, "rb") as f:
+            file_content = f.read()
+        original_filename = doc.original_filename
+
+    elif file:
+        file_content = await file.read()
+        original_filename = file.filename
+    else:
+        raise HTTPException(status_code=400, detail="必须提供 file 或 document_id 参数")
+
+    try:
+        # 提取文本内容
+        extracted_text = await translation_service._extract_text_from_document(
+            file_content,
+            original_filename
+        )
+
+        # 统计信息
+        paragraphs = extracted_text.count('\n\n') + 1
+        chars = len(extracted_text)
+
+        logger.info(f"[文档提取] 成功: {original_filename}, {chars} 字符, {paragraphs} 段落")
+
+        # 返回提取的内容（使用 ResponseModel 格式）
+        from schemas.common import ResponseModel
+        return ResponseModel(
+            data={
+                "content": extracted_text,
+                "filename": original_filename,
+                "stats": {
+                    "paragraphs": paragraphs,
+                    "chars": chars,
+                    "estimated_time_minutes": max(1, chars / 3000)  # 估算翻译时间
+                }
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"[文档提取] 失败: {e}")
+        raise HTTPException(status_code=500, detail=f"文档提取失败: {str(e)}")
+
+
 @router.post("/academic-to-official")
 async def run_academic_to_official(
     file: UploadFile = File(None, description="学术报告文件（PDF/TXT）"),
@@ -398,6 +477,91 @@ async def get_workflow_stages():
     }
 
 
+@router.post("/translation/text")
+async def translate_text_content(
+    content: str = Form(..., description="待翻译的文本内容"),
+    source_language: str = Form(default="auto", description="源语言"),
+    target_language: str = Form(default="zh", description="目标语言"),
+    model: str = Form(default="deepseek-ai/DeepSeek-V3", description="翻译模型"),
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    翻译用户确认后的文本内容
+
+    接收用户编辑确认后的文本，进行对照翻译。
+    支持 SSE 流式输出进度更新。
+
+    **使用场景：**
+    1. 用户先调用 /translation/extract 提取文档内容
+    2. 用户预览和编辑提取的文本
+    3. 用户调用本接口开始翻译
+
+    **请求参数：**
+    - content: 用户确认后的文本内容
+
+    **返回格式（SSE）：**
+    ```
+    data: {"stage": "translating", "progress": 50.0, "message": "正在翻译...", "data": {...}}
+    ```
+    """
+    from services.translation_workflow_service import TranslationWorkflowService
+
+    translation_service = TranslationWorkflowService()
+
+    async def generate_progress_stream():
+        """生成 SSE 进度流"""
+
+        # 强制输出调试信息
+        print(f"\n{'='*60}")
+        print(f"[翻译工作流] 开始翻译用户提供的文本")
+        print(f"[翻译工作流] 文本长度: {len(content)} 字符")
+        print(f"{'='*60}\n")
+
+        try:
+            # 导入翻译服务
+            from services.translation_workflow_service import TranslationStage
+
+            # 执行翻译工作流（直接传入文本）
+            async for update in translation_service.process_translation(
+                file_content=content.encode('utf-8'),  # 文本转为字节
+                original_filename="user_edited_text.txt",
+                source_language=source_language,
+                target_language=target_language,
+                model=model,
+                progress_callback=None,
+                db=db,
+            ):
+                # 流式发送每个进度更新
+                if isinstance(update, str):
+                    yield update
+                else:
+                    yield update.to_sse()
+
+        except Exception as e:
+            logger.error(f"[翻译工作流] 处理失败: {e}")
+            from services.translation_workflow_service import TranslationProgressUpdate, TranslationStage
+            error_update = TranslationProgressUpdate(
+                stage=TranslationStage.FAILED,
+                stage_name="failed",
+                progress=-1,
+                message=f"处理失败: {str(e)}",
+                data={"error": str(e)}
+            )
+            yield error_update.to_sse()
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate_progress_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
 @router.post("/translation")
 async def run_translation(
     file: UploadFile = File(None, description="文档文件（PDF/TXT）"),
@@ -434,9 +598,17 @@ async def run_translation(
     async def generate_progress_stream():
         """生成 SSE 进度流"""
 
+        # 强制输出调试信息
+        print(f"\n{'='*60}")
+        print(f"[翻译工作流] generate_progress_stream 开始执行")
+        print(f"[翻译工作流] document_id: {document_id}")
+        print(f"[翻译工作流] file: {file.filename if file else None}")
+        print(f"{'='*60}\n")
+
         # 获取文件内容和文件名
         if document_id:
             # 从数据库查询文档
+            logger.info(f"[翻译工作流] 使用 document_id 参数: {document_id}")
             result = await db.execute(
                 select(Document).where(
                     Document.id == document_id,
@@ -457,15 +629,21 @@ async def run_translation(
                 return
 
             file_path = file_service.get_full_path(doc.file_path)
+            logger.info(f"[翻译工作流] 文件路径: {file_path}")
+            logger.info(f"[翻译工作流] 文件是否存在: {Path(file_path).exists()}")
+
             with open(file_path, "rb") as f:
                 file_content = f.read()
+
+            logger.info(f"[翻译工作流] 读取文件大小: {len(file_content)} bytes")
             original_filename = doc.original_filename
             logger.info(f"[翻译工作流] 开始处理文档ID: {document_id}, 文件名: {original_filename}")
 
         elif file:
             file_content = await file.read()
             original_filename = file.filename
-            logger.info(f"[翻译工作流] 开始处理文件: {original_filename}")
+            logger.info(f"[翻译工作流] 使用 file 参数，直接上传文件: {original_filename}")
+            logger.info(f"[翻译工作流] 文件大小: {len(file_content)} bytes")
 
             # 保存上传的文件
             saved_path, _, _ = await file_service.save_file(

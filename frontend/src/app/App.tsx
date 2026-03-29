@@ -2,13 +2,13 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sidebar } from "./components/layout/Sidebar";
 import { LibraryModule } from "./components/features/library";
+import { DocLibraryModule } from "./components/features/doc-library";
 import { ResearchModule } from "./components/features/research";
-import { QuarterlyReportModule } from "./components/features/quarterly";
 import { ImageModule } from "./components/features/image";
 import { DataSourcePanel } from "./components/layout/DataSourcePanel";
 import { HistoryPanel } from "./components/HistoryPanel";
 import pbocLogo from "../assets/9d80b1a068fa275c0785a292f5a33bc94ff0f912.png";
-import type { ActiveModule } from "./components/Sidebar";
+import type { ActiveModule } from "./components/layout/Sidebar";
 
 type ViewState =
   | { type: "module"; module: ActiveModule }
@@ -59,10 +59,10 @@ export default function App() {
     switch (viewState.module) {
       case "library":
         return <LibraryModule />;
+      case "doc-library":
+        return <DocLibraryModule />;
       case "research":
         return <ResearchModule />;
-      case "quarterly":
-        return <QuarterlyReportModule />;
       case "image":
         return <ImageModule />;
       default:

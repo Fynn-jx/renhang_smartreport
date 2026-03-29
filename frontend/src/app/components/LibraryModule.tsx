@@ -437,7 +437,10 @@ function ConfigModal({
   );
 }
 
-// ─── Calendar Picker (类似微信查找聊天记录) ───────────────────────────────────
+// ─── Calendar Picker (传统日历视图) ───────────────────────────────────
+import { Calendar } from "./ui/calendar";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 function CalendarPicker({
   dates,
   selectedDate,
@@ -447,64 +450,122 @@ function CalendarPicker({
   selectedDate: string | null;
   onDateSelect: (date: string) => void;
 }) {
-  // Group dates by month
-  const groupedByMonth = dates.reduce((acc, date) => {
-    const month = date.substring(0, 7); // YYYY-MM
-    if (!acc[month]) acc[month] = [];
-    acc[month].push(date);
-    return acc;
-  }, {} as Record<string, string[]>);
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 
-  const months = Object.keys(groupedByMonth).sort().reverse();
+  // 将日期字符串转换为 Date 对象集合
+  const documentDates = new Set(
+    dates.map((date) => new Date(date).toDateString())
+  );
 
-  const formatMonth = (monthStr: string) => {
-    const [year, month] = monthStr.split("-");
-    const monthNames = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
-    return `${year}年 ${monthNames[parseInt(month) - 1]}`;
+  // 当前选中日期的 Date 对象
+  const selectedDateObj = selectedDate ? new Date(selectedDate) : undefined;
+
+  // 检查某个日期是否有文档
+  const hasDocument = (date: Date) => {
+    return documentDates.has(date.toDateString());
   };
 
-  const formatDate = (dateStr: string) => {
-    return dateStr.substring(8); // DD
+  // 月份导航
+  const previousMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  };
+
+  const formatMonthYear = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    return `${year}年 ${month}月`;
   };
 
   return (
     <div className="space-y-3">
-      {months.map((month) => (
-        <div key={month}>
+      {/* 月份导航 */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={previousMonth}
+          className="p-1 rounded hover:bg-gray-100 transition-colors"
+          title="上个月"
+        >
+          <ChevronLeft size={16} style={{ color: "#64748b" }} />
+        </button>
+        <div
+          className="text-sm font-medium"
+          style={{ color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif" }}
+        >
+          {formatMonthYear(currentMonth)}
+        </div>
+        <button
+          onClick={nextMonth}
+          className="p-1 rounded hover:bg-gray-100 transition-colors"
+          title="下个月"
+        >
+          <ChevronRight size={16} style={{ color: "#64748b" }} />
+        </button>
+      </div>
+
+      {/* 日历 */}
+      <Calendar
+        mode="single"
+        month={currentMonth}
+        onMonthChange={setCurrentMonth}
+        selected={selectedDateObj}
+        onSelect={(date) => {
+          if (date) {
+            // 格式化为 YYYY-MM-DD
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
+
+            // 如果点击已选中的日期，则取消选择
+            if (selectedDate === dateStr) {
+              onDateSelect("全部");
+            } else {
+              onDateSelect(dateStr);
+            }
+          } else {
+            // 如果 date 为 null，说明取消了选择
+            onDateSelect("全部");
+          }
+        }}
+        modifiers={{
+          hasDocument: hasDocument,
+        }}
+        modifiersStyles={{
+          hasDocument: {
+            fontWeight: "700",
+            color: "#0f172a",
+            backgroundColor: "#dbeafe", // 淡蓝色背景，更明显
+            border: "1px solid #93c5fd",
+          },
+        }}
+        className="rounded-md border"
+        style={{
+          fontSize: 13,
+          fontFamily: "'Noto Sans SC', sans-serif",
+        }}
+      />
+
+      {/* 提示 */}
+      <div className="flex items-center gap-3 text-xs" style={{ color: "#64748b", fontFamily: "'Noto Sans SC', sans-serif" }}>
+        <div className="flex items-center gap-1">
           <div
-            className="text-xs mb-1.5"
-            style={{ color: "#94a3b8", fontFamily: "'Noto Sans SC', sans-serif" }}
-          >
-            {formatMonth(month)}
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {groupedByMonth[month].map((date) => {
-              const isSelected = selectedDate === date;
-              return (
-                <button
-                  key={date}
-                  onClick={() => onDateSelect(date)}
-                  className="w-8 h-8 rounded-lg text-xs flex items-center justify-center transition-all"
-                  style={{
-                    backgroundColor: isSelected ? "#9b1c1c" : "#f8fafc",
-                    color: isSelected ? "#fff" : "#374151",
-                    border: isSelected ? "none" : "1px solid #e2e8f0",
-                    fontFamily: "'Noto Sans SC', sans-serif",
-                    cursor: "pointer",
-                  }}
-                >
-                  {formatDate(date)}
-                </button>
-              );
-            })}
-          </div>
+            className="w-3 h-3 rounded"
+            style={{ backgroundColor: "#dbeafe", border: "1px solid #93c5fd" }}
+          />
+          <span>有文档</span>
         </div>
-      ))}
-      {dates.length === 0 && (
-        <div className="text-center py-4" style={{ color: "#94a3b8", fontSize: 12 }}>
-          暂无文档
+        <div className="flex items-center gap-1">
+          <div
+            className="w-3 h-3 rounded"
+            style={{ backgroundColor: "#9b1c1c" }}
+          />
+          <span>已选中</span>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -518,7 +579,7 @@ function FilterPanel({
   documentDates,
 }: {
   selectedSources: Source[];
-  selectedDateRange: DateRange;
+  selectedDateRange: DateFilter;
   onSourceChange: (sources: Source[]) => void;
   onDateRangeChange: (range: DateFilter) => void;
   documentDates: string[];
@@ -673,7 +734,7 @@ function FilterPanel({
 function TableView({ onDocClick, docs, onDelete, onUpload }: { onDocClick: (doc: Doc) => void; docs: Doc[]; onDelete: (docId: number) => void; onUpload: (files: FileList) => void }) {
   const [searchVal, setSearchVal] = useState("");
   const [selectedSources, setSelectedSources] = useState<Source[]>([]);
-  const [selectedDateRange, setSelectedDateRange] = useState<DateRange>("全部");
+  const [selectedDateRange, setSelectedDateRange] = useState<DateFilter>("全部");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 从文档列表中提取唯一日期
@@ -690,28 +751,10 @@ function TableView({ onDocClick, docs, onDelete, onUpload }: { onDocClick: (doc:
     }
   };
 
-  // Helper to check if a date is within a date range
-  const isInDateRange = (docDate: string, range: DateRange): boolean => {
-    const doc = new Date(docDate);
-    const now = new Date();
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-
-    switch (range) {
-      case "全部":
-        return true;
-      case "最近一周":
-        return doc >= oneWeekAgo;
-      case "最近一月":
-        return doc >= oneMonthAgo;
-      case "最近三月":
-        return doc >= threeMonthsAgo;
-      case "更早":
-        return doc < threeMonthsAgo;
-      default:
-        return true;
-    }
+  // Helper to check if a date matches the selected date filter
+  const isInDateRange = (docDate: string, range: DateFilter): boolean => {
+    if (range === "全部") return true;
+    return docDate === range;
   };
 
   const filtered = docs.filter((d) => {
@@ -729,13 +772,16 @@ function TableView({ onDocClick, docs, onDelete, onUpload }: { onDocClick: (doc:
       <div className="flex items-center justify-between mb-5 flex-shrink-0">
         <div>
           <h1 className="text-xl" style={{ color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif", fontWeight: 600 }}>
-            文献与公文库
+            前沿报告库
           </h1>
           <p style={{ color: "#64748b", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif", marginTop: 2 }}>
-            共 {filtered.length} 份研报 · {filtered.filter((d) => d.aiStatus === "已完成").length} 份已完成AI处理
+            从本地上传或浏览器插件下载的前沿报告，支持按时间和来源筛选
             {selectedSources.length > 0 || selectedDateRange !== "全部" ? (
               <span style={{ color: "#9b1c1c" }}>（已筛选）</span>
             ) : null}
+          </p>
+          <p style={{ color: "#94a3b8", fontSize: 12, fontFamily: "'Noto Sans SC', sans-serif", marginTop: 1 }}>
+            共 {filtered.length} 份报告 · {filtered.filter((d) => d.aiStatus === "已完成").length} 份已完成AI处理
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1071,9 +1117,72 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
   const [currentStep, setCurrentStep] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const startGeneration = async () => {
+  // 两步翻译工作流状态
+  const [extractedContent, setExtractedContent] = useState<string>("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState<string>("");
+  const [extracting, setExtracting] = useState(false);
+
+  // 第一步：提取文档内容
+  const extractDocumentContent = async () => {
     if (!doc) {
       setError("未选择文档");
+      return;
+    }
+
+    setExtracting(true);
+    setError(null);
+
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+    try {
+      console.log("[文档提取] 开始提取文档:", doc.id);
+      const formData = new FormData();
+      formData.append("document_id", doc.id);
+
+      const response = await fetch(`${API_BASE}/api/v1/workflows/translation/extract`, {
+        method: "POST",
+        headers: {
+          ...(getAuthToken() ? { "Authorization": `Bearer ${getAuthToken()}` } : {}),
+        },
+        body: formData,
+      });
+
+      console.log("[文档提取] 响应状态:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[文档提取] 错误响应:", errorText);
+        throw new Error(`提取失败: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("[文档提取] 响应数据:", data);
+
+      const content = data.data?.content || "";
+
+      if (!content) {
+        console.error("[文档提取] 内容为空:", data);
+        setError("提取的内容为空，请检查文档是否有效");
+        return;
+      }
+
+      console.log("[文档提取] 提取成功，内容长度:", content.length);
+      setExtractedContent(content);
+      setEditedContent(content);
+      setIsEditing(true);
+    } catch (err) {
+      console.error("[文档提取] 失败:", err);
+      setError(err instanceof Error ? err.message : "提取失败");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  // 第二步：翻译用户确认的文本
+  const translateConfirmedText = async () => {
+    if (!editedContent) {
+      setError("没有可翻译的内容");
       return;
     }
 
@@ -1082,28 +1191,19 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
     setError(null);
     setProgressSteps([]);
     setCurrentStep(0);
+    setIsEditing(false);
 
     abortControllerRef.current = new AbortController();
     const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-    // 根据模式选择端点 - 都使用 SSE 流式
-    const endpoint = mode === "translate"
-      ? "/api/v1/workflows/translation"
-      : "/api/v1/workflows/academic-to-official";
-
     try {
       const formData = new FormData();
-      formData.append("document_id", doc.id);
+      formData.append("content", editedContent);
+      formData.append("source_language", "auto");
+      formData.append("target_language", "zh");
+      formData.append("model", config.model);
 
-      if (mode === "translate") {
-        formData.append("source_language", "auto");
-        formData.append("target_language", "zh");
-        formData.append("model", config.model);
-      } else {
-        formData.append("model", config.model);
-      }
-
-      const response = await fetch(`${API_BASE}${endpoint}`, {
+      const response = await fetch(`${API_BASE}/api/v1/workflows/translation/text`, {
         method: "POST",
         headers: {
           ...(getAuthToken() ? { "Authorization": `Bearer ${getAuthToken()}` } : {}),
@@ -1165,7 +1265,7 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
             }
 
             // 翻译模式：处理逐段翻译的完整段落
-            if (mode === "translate" && data.stage === "chunk_processing" && data.data?.translated_paragraph) {
+            if (data.stage === "chunk_processing" && data.data?.translated_paragraph) {
               // 追加已翻译的段落
               accumulatedText += data.data.translated_paragraph + "\n\n";
               setDisplayedText(accumulatedText);
@@ -1173,7 +1273,7 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
             }
 
             // 翻译模式：处理流式翻译的内容片段（逐字/逐片段）- 保留用于其他功能
-            if (mode === "translate" && data.stage === "translating" && data.data?.content_piece) {
+            if (data.stage === "translating" && data.data?.content_piece) {
               // 实时追加翻译的内容片段
               accumulatedText += data.data.content_piece;
               setDisplayedText(accumulatedText);
@@ -1181,12 +1281,134 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
             }
 
             // 翻译模式：处理完成时的翻译结果
-            if (mode === "translate" && data.stage === "completed") {
+            if (data.stage === "completed") {
               // 使用完整的翻译文本
               setDisplayedText(data.data?.translated_text || accumulatedText);
               setGenerating(false);
               setGenerated(true);
               continue;
+            }
+
+            // 写作模式：处理生成的内容
+            if (data.content) {
+              accumulatedText += data.content;
+              setDisplayedText(accumulatedText);
+            }
+
+            // 处理完整内容（一次性返回的情况）
+            if (data.output) {
+              setDisplayedText(data.output);
+            }
+
+            // 处理错误
+            if (data.stage === "failed" || data.error) {
+              setError(data.message || data.error || "处理失败");
+              setGenerating(false);
+            }
+          } catch (e) {
+            console.warn("解析 SSE 数据失败:", dataStr, e);
+          }
+        }
+      }
+
+      setGenerating(false);
+      setGenerated(true);
+    } catch (err) {
+      if (err instanceof Error) {
+        if (err.name === "AbortError") {
+          setError("请求已取消");
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError("未知错误");
+      }
+      setGenerating(false);
+    }
+  };
+
+  // 旧版写作模式的生成函数（保持不变）
+  const startGeneration = async () => {
+    if (!doc) {
+      setError("未选择文档");
+      return;
+    }
+
+    setGenerating(true);
+    setDisplayedText("");
+    setError(null);
+    setProgressSteps([]);
+    setCurrentStep(0);
+
+    abortControllerRef.current = new AbortController();
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+    // 写作模式使用 SSE 流式
+    const endpoint = "/api/v1/workflows/academic-to-official";
+
+    try {
+      const formData = new FormData();
+      formData.append("document_id", doc.id);
+      formData.append("model", config.model);
+
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: "POST",
+        headers: {
+          ...(getAuthToken() ? { "Authorization": `Bearer ${getAuthToken()}` } : {}),
+        },
+        body: formData,
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("无法读取响应流");
+      }
+
+      let buffer = "";
+      let accumulatedText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine || !trimmedLine.startsWith("data: ")) continue;
+
+          const dataStr = trimmedLine.slice(6);
+
+          if (dataStr === "[DONE]") {
+            setGenerating(false);
+            setGenerated(true);
+            continue;
+          }
+
+          try {
+            const data = JSON.parse(dataStr);
+
+            // 处理进度步骤（思维链）
+            if (data.message) {
+              setProgressSteps((prev) => {
+                if (!prev.includes(data.message)) {
+                  const newSteps = [...prev, data.message];
+                  setCurrentStep(newSteps.length);
+                  return newSteps;
+                }
+                return prev;
+              });
             }
 
             // 写作模式：处理生成的内容
@@ -1269,7 +1491,13 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
   };
 
   useEffect(() => {
-    startGeneration();
+    // 翻译模式：先提取内容
+    if (mode === "translate") {
+      extractDocumentContent();
+    } else {
+      // 写作模式：直接开始生成
+      startGeneration();
+    }
 
     return () => {
       if (abortControllerRef.current) {
@@ -1314,34 +1542,173 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
         </div>
       )}
 
-      <div className="flex-1 overflow-auto p-4">
-        {displayedText ? (
-          <div style={{ fontFamily: "'Noto Serif SC', 'SimSun', serif", fontSize: 14, lineHeight: 2.1, color: "#1e293b", whiteSpace: "pre-wrap" }}>
-            {displayedText}
-            {generating && (
-              <motion.span
-                animate={{ opacity: [1, 0] }}
-                transition={{ duration: 0.5, repeat: Infinity }}
-                style={{ display: "inline-block", width: 2, height: 16, backgroundColor: "#9b1c1c", marginLeft: 2, verticalAlign: "text-bottom" }}
-              />
-            )}
+      {/* 翻译模式：提取中 */}
+      {mode === "translate" && extracting && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <motion.div
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.8, repeat: Infinity }}
+              className="w-8 h-8 rounded-full border-2 mx-auto mb-3"
+              style={{ borderColor: "#16a34a", borderTopColor: "transparent" }}
+            />
+            <p style={{ color: "#94a3b8", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif" }}>正在提取文档内容...</p>
           </div>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <motion.div
-                animate={{ opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 1.8, repeat: Infinity }}
-                className="w-8 h-8 rounded-full border-2 mx-auto mb-3"
-                style={{ borderColor: "#9b1c1c", borderTopColor: "transparent" }}
-              />
-              <p style={{ color: "#94a3b8", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif" }}>AI 引擎正在思考与生成……</p>
+        </div>
+      )}
+
+      {/* 翻译模式：编辑界面 */}
+      {mode === "translate" && isEditing && !extracting && (
+        <div className="flex-1 overflow-auto p-4">
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <span style={{ fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif", color: "#374151", fontWeight: 500 }}>
+                提取的文档内容
+              </span>
+              <span style={{ fontSize: 11, fontFamily: "'Noto Sans SC', sans-serif", color: "#64748b" }}>
+                {editedContent.length} 字符
+              </span>
+            </div>
+            <div className="p-2 rounded-lg mb-3" style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+              <p style={{ fontSize: 11.5, fontFamily: "'Noto Sans SC', sans-serif", color: "#166534", lineHeight: 1.6 }}>
+                ✅ 请检查并编辑提取的内容。删除页眉、页脚、图表标签等不需要翻译的文字，然后点击"确认并翻译"按钮。
+              </p>
             </div>
           </div>
-        )}
-      </div>
 
-      {generated && (
+          <textarea
+            value={editedContent}
+            onChange={(e) => setEditedContent(e.target.value)}
+            className="w-full h-full p-4 rounded-lg resize-none focus:outline-none focus:ring-2"
+            style={{
+              fontFamily: "'Noto Serif SC', 'SimSun', serif",
+              fontSize: 14,
+              lineHeight: 2,
+              color: "#1e293b",
+              backgroundColor: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              minHeight: 400
+            }}
+            placeholder="提取的内容将显示在这里..."
+          />
+        </div>
+      )}
+
+      {/* 翻译模式：生成中/已完成的界面 */}
+      {mode === "translate" && !isEditing && (
+        <div className="flex-1 overflow-auto p-4">
+          {displayedText ? (
+            <div style={{ fontFamily: "'Noto Serif SC', 'SimSun', serif", fontSize: 14, lineHeight: 2.1, color: "#1e293b", whiteSpace: "pre-wrap" }}>
+              {displayedText}
+              {generating && (
+                <motion.span
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.5, repeat: Infinity }}
+                  style={{ display: "inline-block", width: 2, height: 16, backgroundColor: "#9b1c1c", marginLeft: 2, verticalAlign: "text-bottom" }}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <motion.div
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.8, repeat: Infinity }}
+                  className="w-8 h-8 rounded-full border-2 mx-auto mb-3"
+                  style={{ borderColor: "#9b1c1c", borderTopColor: "transparent" }}
+                />
+                <p style={{ color: "#94a3b8", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif" }}>AI 引擎正在思考与生成……</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 写作模式：保持原有界面 */}
+      {mode === "write" && (
+        <div className="flex-1 overflow-auto p-4">
+          {displayedText ? (
+            <div style={{ fontFamily: "'Noto Serif SC', 'SimSun', serif", fontSize: 14, lineHeight: 2.1, color: "#1e293b", whiteSpace: "pre-wrap" }}>
+              {displayedText}
+              {generating && (
+                <motion.span
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.5, repeat: Infinity }}
+                  style={{ display: "inline-block", width: 2, height: 16, backgroundColor: "#9b1c1c", marginLeft: 2, verticalAlign: "text-bottom" }}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <motion.div
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.8, repeat: Infinity }}
+                  className="w-8 h-8 rounded-full border-2 mx-auto mb-3"
+                  style={{ borderColor: "#9b1c1c", borderTopColor: "transparent" }}
+                />
+                <p style={{ color: "#94a3b8", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif" }}>AI 引擎正在思考与生成……</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 翻译模式：编辑确认按钮 */}
+      {mode === "translate" && isEditing && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex-shrink-0 px-4 py-3 flex justify-between items-center"
+          style={{ borderTop: "1px solid #e2e8f0" }}
+        >
+          <button
+            onClick={() => {
+              setIsEditing(false);
+              onBack();
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg"
+            style={{ border: "1px solid #e2e8f0", color: "#64748b", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13 }}
+          >
+            <X size={14} />
+            取消
+          </button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={translateConfirmedText}
+            disabled={!editedContent || generating}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-white"
+            style={{
+              backgroundColor: (!editedContent || generating) ? "#cbd5e1" : "#9b1c1c",
+              fontFamily: "'Noto Sans SC', sans-serif",
+              fontSize: 13,
+              boxShadow: "0 1px 4px rgba(155,28,28,0.3)",
+              cursor: (!editedContent || generating) ? "not-allowed" : "pointer"
+            }}
+          >
+            {generating ? (
+              <>
+                <motion.div
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className="w-3 h-3 rounded-full border"
+                  style={{ borderColor: "#fff", borderTopColor: "transparent" }}
+                />
+                翻译中...
+              </>
+            ) : (
+              <>
+                <Languages size={14} />
+                确认并翻译
+              </>
+            )}
+          </motion.button>
+        </motion.div>
+      )}
+
+      {/* 写作模式或翻译完成：导出按钮 */}
+      {((mode === "write" && generated) || (mode === "translate" && generated && !isEditing)) && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

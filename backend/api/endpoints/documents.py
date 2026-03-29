@@ -27,12 +27,12 @@ async def list_documents(
     page: int = Query(default=1, ge=1, description="页码"),
     page_size: int = Query(default=20, ge=1, le=100, description="每页数量"),
     document_type: Optional[str] = Query(default=None, description="按文档类型筛选"),
-    tag_id: Optional[uuid.UUID] = Query(default=None, description="按标签筛选"),
+    tag_id: Optional[str] = Query(default=None, description="按标签筛选（字符串格式）"),
     keyword: Optional[str] = Query(default=None, description="按关键词搜索"),
     sort_by: str = Query(default="created_at", description="排序字段"),
     sort_order: str = Query(default="desc", regex="^(asc|desc)$", description="排序方向"),
     db: AsyncSession = Depends(get_db),
-    owner_id: uuid.UUID = Depends(get_current_user_id),
+    owner_id: str = Depends(get_current_user_id),
 ):
     """
     获取文档列表
@@ -78,9 +78,9 @@ async def list_documents(
 
 @router.get("/{document_id}", response_model=ResponseModel[DocumentResponse])
 async def get_document(
-    document_id: uuid.UUID,
+    document_id: str,
     db: AsyncSession = Depends(get_db),
-    owner_id: uuid.UUID = Depends(get_current_user_id),
+    owner_id: str = Depends(get_current_user_id),
 ):
     """
     获取单个文档详情
@@ -121,7 +121,7 @@ async def upload_document(
     parent_id: Optional[uuid.UUID] = Form(None, description="父文档 ID"),
     is_shared: Optional[bool] = Form(False, description="是否共享给团队"),
     db: AsyncSession = Depends(get_db),
-    owner_id: uuid.UUID = Depends(get_current_user_id),
+    owner_id: str = Depends(get_current_user_id),
 ):
     """
     上传新文档
@@ -202,7 +202,7 @@ async def update_document(
     tag_ids: Optional[str] = Form(None, description="标签 ID（逗号分隔）"),
     is_shared: Optional[bool] = Form(None, description="是否共享给团队"),
     db: AsyncSession = Depends(get_db),
-    owner_id: uuid.UUID = Depends(get_current_user_id),
+    owner_id: str = Depends(get_current_user_id),
 ):
     """
     更新文档元数据（标题、标签等）
@@ -250,7 +250,7 @@ async def update_document(
 async def delete_document(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    owner_id: uuid.UUID = Depends(get_current_user_id),
+    owner_id: str = Depends(get_current_user_id),
 ):
     """
     删除文档
@@ -283,7 +283,7 @@ async def delete_document(
 async def get_document_content(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    owner_id: uuid.UUID = Depends(get_current_user_id),
+    owner_id: str = Depends(get_current_user_id),
 ):
     """
     获取文档内容

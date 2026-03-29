@@ -2,9 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Globe2,
-  Plus,
-  X,
-  Link,
   ChevronDown,
   Search,
   CheckCircle2,
@@ -285,8 +282,6 @@ export function ResearchModule() {
   const [country, setCountry] = useState("");
   const [resType, setResType] = useState("国别分析");
   const [model, setModel] = useState("DeepSeek V3");
-  const [customUrls, setCustomUrls] = useState<string[]>([]);
-  const [urlInput, setUrlInput] = useState("");
   const [currentStep, setCurrentStep] = useState(-1);
   const [displayedResult, setDisplayedResult] = useState("");
   const [resultDone, setResultDone] = useState(false);
@@ -301,17 +296,6 @@ export function ResearchModule() {
   const filteredCountries = selectedRegion === "全部"
     ? countries
     : countriesByRegion[selectedRegion as AfricanRegion];
-
-  const addUrl = () => {
-    if (urlInput.trim()) {
-      setCustomUrls((prev) => [...prev, urlInput.trim()]);
-      setUrlInput("");
-    }
-  };
-
-  const removeUrl = (i: number) => {
-    setCustomUrls((prev) => prev.filter((_, idx) => idx !== i));
-  };
 
   const startResearch = async () => {
     setState("loading");
@@ -334,11 +318,9 @@ export function ResearchModule() {
       const stream = resType === "国别研究报告"
         ? await api.startCountryResearch({
             country_code: countryCode,
-            user_sources: customUrls.length > 0 ? JSON.stringify(customUrls.map(url => ({ name: "自定义数据源", url }))) : undefined,
           })
         : await api.startQuarterlyReport({
             country_code: countryCode,
-            user_sources: customUrls.length > 0 ? JSON.stringify(customUrls.map(url => ({ name: "自定义数据源", url }))) : undefined,
           });
 
       const reader = stream.getReader();
@@ -590,61 +572,6 @@ export function ResearchModule() {
                     </motion.button>
                   ))}
                 </div>
-              </div>
-
-              {/* Divider */}
-              <div style={{ height: 1, backgroundColor: "#f1f5f9", margin: "16px 0" }} />
-
-              {/* Custom URLs */}
-              <div className="mb-6">
-                <label style={{ color: "#374151", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif", fontWeight: 500, display: "block", marginBottom: 8 }}>
-                  自定义数据源 URL
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <div className="flex-1 relative">
-                    <Link size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94a3b8" }} />
-                    <input
-                      type="url"
-                      placeholder="https://example.com/report"
-                      value={urlInput}
-                      onChange={(e) => setUrlInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && addUrl()}
-                      className="w-full pl-8 pr-3 py-2 rounded-lg outline-none text-sm"
-                      style={{ border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13 }}
-                    />
-                  </div>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={addUrl}
-                    className="px-3 py-2 rounded-lg flex items-center gap-1"
-                    style={{ backgroundColor: "#0f172a", color: "#fff", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif" }}
-                  >
-                    <Plus size={14} />
-                    添加
-                  </motion.button>
-                </div>
-                {customUrls.length > 0 && (
-                  <div className="space-y-1.5">
-                    {customUrls.map((url, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                        style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0" }}
-                      >
-                        <Link size={12} style={{ color: "#94a3b8", flexShrink: 0 }} />
-                        <span className="flex-1 truncate" style={{ fontSize: 12, color: "#64748b", fontFamily: "'Noto Sans SC', sans-serif" }}>
-                          {url}
-                        </span>
-                        <button onClick={() => removeUrl(i)}>
-                          <X size={13} style={{ color: "#cbd5e1" }} />
-                        </button>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Start Button */}

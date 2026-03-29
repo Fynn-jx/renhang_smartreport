@@ -109,35 +109,27 @@ class FitzExtractor:
                 try:
                     page = pdf_document[page_num]
 
-                    # 提取文本块
-                    blocks = page.get_text("blocks")  # 获取文本块
+                    # 直接提取文本（最简单可靠的方法）
+                    text = page.get_text().strip()
 
-                    page_markdown = []
+                    if text:
+                        markdown_parts.append(text)
 
-                    for block in blocks:
-                        if block.get("type") == 0:  # 文本块
-                            text = block.get("text", "").strip()
-                            if text:
-                                page_markdown.append(text)
-
-                        elif block.get("type") == 1:  # 图片块
-                            if extract_images:
-                                total_images += 1
-                                # 可以选择提取图片
-                                # image = page.get_images()
-                                page_markdown.append(f"\n[图片 {total_images}]\n")
+                    # 统计图片
+                    if extract_images:
+                        try:
+                            images = page.get_images()
+                            if images:
+                                total_images += len(images)
+                        except Exception as e:
+                            logger.debug(f"[DEBUG] 获取图片列表失败（可忽略）: {e}")
 
                     # 检测表格（简单检测：多列文本）
                     if extract_tables:
-                        text = page.get_text()
                         if self._detect_table(text):
                             total_tables += 1
                             # 可以选择使用更复杂的表格提取
                             # tables = page.find_tables()
-
-                    # 添加页面分隔符
-                    if page_markdown:
-                        markdown_parts.append("\n".join(page_markdown))
 
                     # 页面之间添加分隔
                     if page_num < page_count - 1:

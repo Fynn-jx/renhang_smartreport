@@ -6,6 +6,7 @@ import {
   BarChart2,
   TrendingUp,
   Database,
+  BookOpen,
 } from "lucide-react";
 
 interface DataSourcePanelProps {
@@ -13,151 +14,131 @@ interface DataSourcePanelProps {
   onBack: () => void;
 }
 
-interface Dataset {
-  name: string;
-  desc: string;
-  frequency: string;
-  coverage: string;
-  lastUpdated: string;
-  tags: string[];
-}
-
-interface SourceInfo {
+// 数据源条目接口（长条细格子展示）
+interface DataSourceItem {
   id: string;
-  label: string;
+  name: string;
+  number: string; // 编号
+  url: string;
   icon: React.ElementType;
   color: string;
-  bgColor: string;
-  intro: string;
-  url: string;
-  datasets: Dataset[];
+  description?: string;
 }
 
-const sourcesData: SourceInfo[] = [
+// 数据源列表（长条细格子风格）
+const dataSourceList: DataSourceItem[] = [
+  {
+    id: "imf",
+    name: "国际货币基金组织 (IMF)",
+    number: "IMF-001",
+    url: "https://www.imf.org",
+    icon: BarChart2,
+    color: "#2563eb",
+    description: "全球经济监测、金融稳定、地区经济展望报告",
+  },
   {
     id: "uneca",
-    label: "联合国非洲经济委员会 (UNECA)",
+    name: "联合国非洲经济委员会 (UNECA)",
+    number: "UN-001",
+    url: "https://www.uneca.org",
     icon: Globe2,
     color: "#059669",
-    bgColor: "#ecfdf5",
-    intro:
-      "联合国非洲经济委员会（UNECA）聚焦非洲大陆特定区域或专题（如金融科技、普惠金融），分析深入，常包含详实的案例和数据。核心报告如《东非地区金融科技研究》等区域性深度报告。",
-    url: "https://www.uneca.org",
-    datasets: [
-      {
-        name: "东非地区金融科技研究",
-        desc: "聚焦东非地区金融科技发展、数字化转型及普惠金融创新",
-        frequency: "不定期",
-        coverage: "东非地区",
-        lastUpdated: "2024-10-15",
-        tags: ["金融科技", "东非", "数字化"],
-      },
-      {
-        name: "非洲经济展望",
-        desc: "非洲大陆经济增长预测、区域发展及可持续发展目标进展",
-        frequency: "年度",
-        coverage: "非洲全境",
-        lastUpdated: "2024-09-01",
-        tags: ["经济展望", "GDP", "可持续发展"],
-      },
-    ],
+    description: "非洲区域经济研究、金融科技、可持续发展",
   },
   {
     id: "afdb",
-    label: "非洲开发银行 (AfDB)",
+    name: "非洲开发银行 (AfDB)",
+    number: "AFDB-001",
+    url: "https://www.afdb.org",
     icon: TrendingUp,
     color: "#0891b2",
-    bgColor: "#ecfeff",
-    intro:
-      "非洲开发银行（AfDB）的年度《非洲经济展望》是其旗舰报告，涵盖经济增长、财政政策、债务可持续性等宏观金融议题。数据权威，预测性强，是研判非洲宏观经济和金融环境最重要的参考资料之一。",
-    url: "https://www.afdb.org",
-    datasets: [
-      {
-        name: "非洲经济展望",
-        desc: "年度旗舰报告，涵盖经济增长、财政政策、债务可持续性等宏观金融议题",
-        frequency: "年度",
-        coverage: "非洲54国",
-        lastUpdated: "2024-11-01",
-        tags: ["经济展望", "财政", "债务"],
-      },
-      {
-        name: "非洲发展展望",
-        desc: "长期发展愿景、工业化进程及区域一体化分析",
-        frequency: "年度",
-        coverage: "非洲全境",
-        lastUpdated: "2024-06-15",
-        tags: ["发展", "工业化", "区域一体化"],
-      },
-    ],
+    description: "非洲经济展望、发展政策、宏观经济分析",
   },
   {
     id: "worldbank",
-    label: "世界银行 (World Bank)",
+    name: "世界银行 (World Bank)",
+    number: "WB-001",
+    url: "https://www.worldbank.org",
     icon: Database,
     color: "#ea580c",
-    bgColor: "#fff7ed",
-    intro:
-      "世界银行（World Bank）的DataBank数据库和Open Knowledge Repository知识库提供海量的国别和时间序列数据，其研究报告（如《非洲银行业》等）基于严谨的实证分析，学术价值高。",
-    url: "https://www.worldbank.org",
-    datasets: [
-      {
-        name: "DataBank数据库",
-        desc: "海量的国别和时间序列数据，覆盖经济发展、社会指标、环境等",
-        frequency: "持续更新",
-        coverage: "全球200+国家",
-        lastUpdated: "2024-12-01",
-        tags: ["数据库", "时间序列", "国别"],
-      },
-      {
-        name: "Open Knowledge Repository",
-        desc: "世界银行研究报告库，包含《非洲银行业》等深度研究",
-        frequency: "持续更新",
-        coverage: "全球",
-        lastUpdated: "2024-12-01",
-        tags: ["研究报告", "非洲", "银行"],
-      },
-    ],
+    description: "全球发展数据、国别研究、开放知识库",
   },
   {
-    id: "imf",
-    label: "国际货币基金组织 (IMF)",
+    id: "wto",
+    name: "世界贸易组织 (WTO)",
+    number: "WTO-001",
+    url: "https://www.wto.org",
+    icon: TrendingUp,
+    color: "#06b6d4",
+    description: "全球贸易统计、贸易政策、经济研究",
+  },
+  {
+    id: "oecd",
+    name: "经合组织 (OECD)",
+    number: "OECD-001",
+    url: "https://www.oecd.org",
+    icon: Database,
+    color: "#10b981",
+    description: "经济政策分析、统计数据、展望报告",
+  },
+  {
+    id: "un",
+    name: "联合国 (United Nations)",
+    number: "UN-002",
+    url: "https://www.un.org",
+    icon: Globe2,
+    color: "#059669",
+    description: "全球发展议程、可持续发展目标、政策报告",
+  },
+  {
+    id: "pbc",
+    name: "中国人民银行",
+    number: "PBC-001",
+    url: "https://www.pbc.gov.cn",
     icon: BarChart2,
-    color: "#2563eb",
-    bgColor: "#eff6ff",
-    intro:
-      "国际货币基金组织（IMF）的IMF eLibrary和IMF DATA平台提供《地区经济展望》（含撒哈拉以南非洲）、《全球金融稳定报告》等，重点关注财政、债务、汇率及金融稳定等议题。",
-    url: "https://www.imf.org",
-    datasets: [
-      {
-        name: "IMF eLibrary",
-        desc: "IMF官方出版物、研究报告及工作论文全文数据库",
-        frequency: "持续更新",
-        coverage: "全球",
-        lastUpdated: "2024-12-01",
-        tags: ["出版物", "研究", "报告"],
-      },
-      {
-        name: "IMF DATA",
-        desc: "宏观经济统计数据、国际收支、汇率及金融稳定指标",
-        frequency: "持续更新",
-        coverage: "全球190+国家",
-        lastUpdated: "2024-12-01",
-        tags: ["数据", "统计", "汇率"],
-      },
-      {
-        name: "地区经济展望",
-        desc: "撒哈拉以南非洲地区经济展望，关注财政、债务、汇率及金融稳定",
-        frequency: "年度",
-        coverage: "撒哈拉以南非洲",
-        lastUpdated: "2024-10-15",
-        tags: ["非洲", "经济展望", "债务"],
-      },
-    ],
+    color: "#dc2626",
+    description: "货币政策、金融稳定、统计报告",
+  },
+  {
+    id: "stats",
+    name: "国家统计局",
+    number: "STATS-001",
+    url: "https://www.stats.gov.cn",
+    icon: Database,
+    color: "#f97316",
+    description: "宏观经济数据、统计年鉴、国民经济核算",
+  },
+  {
+    id: "mckinsey",
+    name: "麦肯锡全球研究院",
+    number: "MGI-001",
+    url: "https://www.mckinsey.com",
+    icon: BookOpen,
+    color: "#6366f1",
+    description: "经济研究、行业分析、全球趋势",
+  },
+  {
+    id: "bcg",
+    name: "波士顿咨询 (BCG)",
+    number: "BCG-001",
+    url: "https://www.bcg.com",
+    icon: BookOpen,
+    color: "#ec4899",
+    description: "战略咨询、行业洞察、经济研究",
+  },
+  {
+    id: "bain",
+    name: "贝恩公司",
+    number: "BAIN-001",
+    url: "https://www.bain.com",
+    icon: BookOpen,
+    color: "#14b8a6",
+    description: "全球商业趋势、市场研究、战略咨询",
   },
 ];
 
 export function DataSourcePanel({ sourceId, onBack }: DataSourcePanelProps) {
-  // Show all sources when sourceId is "dataSource"
+  // Show all sources when sourceId is "dataSource" (长条细格子展示)
   if (sourceId === "dataSource") {
     return (
       <div className="h-full flex flex-col overflow-hidden">
@@ -176,17 +157,40 @@ export function DataSourcePanel({ sourceId, onBack }: DataSourcePanelProps) {
             <ArrowLeft size={14} />
             返回
           </motion.button>
-          <h1
-            style={{ color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 18, fontWeight: 600 }}
-          >
-            数据源
-          </h1>
+          <div>
+            <h1
+              style={{ color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 18, fontWeight: 600 }}
+            >
+              数据源
+            </h1>
+            <p style={{ color: "#94a3b8", fontSize: 12, fontFamily: "'Noto Sans SC', sans-serif", marginTop: 2 }}>
+              点击数据源跳转访问，通过浏览器插件下载报告到前沿报告库
+            </p>
+          </div>
         </div>
 
-        {/* All Sources List */}
+        {/* Data Source Grid - 长条细格子风格 */}
         <div className="flex-1 overflow-auto p-6">
-          <div className="grid gap-4">
-            {sourcesData.map((source) => {
+          {/* 表头 */}
+          <div
+            className="grid gap-3 px-4 pb-3 mb-3 border-b text-xs font-medium"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "80px 2fr 2.5fr 80px",
+              color: "#64748b",
+              fontFamily: "'Noto Sans SC', sans-serif",
+              borderBottom: "1px solid #e2e8f0",
+            }}
+          >
+            <div>编号</div>
+            <div>网址名称</div>
+            <div>URL</div>
+            <div style={{ textAlign: "center" }}>操作</div>
+          </div>
+
+          {/* 数据源列表 */}
+          <div className="space-y-1.5">
+            {dataSourceList.map((source, index) => {
               const Icon = source.icon;
               return (
                 <motion.a
@@ -194,37 +198,153 @@ export function DataSourcePanel({ sourceId, onBack }: DataSourcePanelProps) {
                   href={source.url}
                   target="_blank"
                   rel="noreferrer"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-4 p-4 rounded-xl cursor-pointer"
-                  style={{ backgroundColor: "#fff", border: "1px solid #e2e8f0" }}
-                  whileHover={{ backgroundColor: "#f8fafc", borderColor: "#cbd5e1" }}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                  className="grid gap-3 px-4 py-3 rounded-lg items-center group"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "80px 2fr 2.5fr 80px",
+                    backgroundColor: "#fff",
+                    border: "1px solid #e2e8f0",
+                    transition: "all 0.15s",
+                  }}
+                  whileHover={{
+                    borderColor: source.color,
+                    backgroundColor: `${source.color}04`,
+                    boxShadow: `0 2px 8px ${source.color}15`,
+                  }}
                 >
+                  {/* 编号 */}
                   <div
-                    className="flex items-center justify-center rounded-xl flex-shrink-0"
-                    style={{ width: 48, height: 48, backgroundColor: source.bgColor, border: `1px solid ${source.color}22` }}
+                    className="text-xs font-mono rounded px-2 py-1 text-center"
+                    style={{
+                      color: source.color,
+                      backgroundColor: `${source.color}10`,
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontWeight: 500,
+                    }}
                   >
-                    <Icon size={24} style={{ color: source.color }} />
+                    {source.number}
                   </div>
-                  <div className="flex-1">
-                    <h3 style={{ color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 16, fontWeight: 600 }}>
-                      {source.label}
-                    </h3>
-                    <p style={{ color: "#64748b", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif", marginTop: 4 }}>
-                      {source.intro.slice(0, 60)}...
-                    </p>
+
+                  {/* 网址名称 */}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="flex items-center justify-center rounded flex-shrink-0"
+                      style={{
+                        width: 28,
+                        height: 28,
+                        backgroundColor: `${source.color}10`,
+                      }}
+                    >
+                      <Icon size={14} style={{ color: source.color }} />
+                    </div>
+                    <span
+                      className="text-sm font-medium truncate"
+                      style={{
+                        color: "#0f172a",
+                        fontFamily: "'Noto Sans SC', sans-serif",
+                      }}
+                    >
+                      {source.name}
+                    </span>
                   </div>
-                  <ExternalLink size={16} style={{ color: "#94a3b8" }} />
+
+                  {/* URL */}
+                  <div
+                    className="text-xs truncate flex items-center gap-1"
+                    style={{
+                      color: "#64748b",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    {source.url}
+                  </div>
+
+                  {/* 操作 */}
+                  <div className="flex justify-center">
+                    <motion.div
+                      className="flex items-center justify-center rounded-full"
+                      style={{
+                        width: 28,
+                        height: 28,
+                        backgroundColor: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                      }}
+                      whileHover={{
+                        backgroundColor: source.color,
+                        borderColor: source.color,
+                      }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <ExternalLink
+                        size={13}
+                        style={{
+                          color: "#94a3b8",
+                          transition: "color 0.15s",
+                        }}
+                        className="group-hover/[a]:text-white"
+                      />
+                    </motion.div>
+                  </div>
                 </motion.a>
               );
             })}
           </div>
+
+          {/* 使用提示 */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-6 p-4 rounded-lg"
+            style={{
+              backgroundColor: "#fef2f2",
+              border: "1px solid #fecaca",
+            }}
+          >
+            <div className="flex gap-3">
+              <div
+                className="flex-shrink-0 flex items-center justify-center rounded-full"
+                style={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: "rgba(155, 28, 28, 0.1)",
+                }}
+              >
+                <ExternalLink size={16} style={{ color: "#9b1c1c" }} />
+              </div>
+              <div className="flex-1">
+                <div
+                  className="text-sm font-medium mb-1"
+                  style={{
+                    color: "#9b1c1c",
+                    fontFamily: "'Noto Sans SC', sans-serif",
+                  }}
+                >
+                  使用链路
+                </div>
+                <div
+                  className="text-xs leading-relaxed"
+                  style={{
+                    color: "#b91c1c",
+                    fontFamily: "'Noto Sans SC', sans-serif",
+                  }}
+                >
+                  登录平台 → 点击数据源跳转 → 浏览报告 → 使用浏览器插件下载到前沿报告库 →
+                  选择功能（对照翻译/公文写作）→ AI 处理 → 导出 Word
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
     );
   }
 
-  const source = sourcesData.find((s) => s.id === sourceId);
+  // 单个数据源详情视图（如果点击了某个具体数据源）
+  const source = dataSourceList.find((s) => s.id === sourceId);
   if (!source) return null;
   const Icon = source.icon;
 
@@ -247,26 +367,33 @@ export function DataSourcePanel({ sourceId, onBack }: DataSourcePanelProps) {
         </motion.button>
         <div
           className="flex items-center justify-center rounded-xl flex-shrink-0"
-          style={{ width: 40, height: 40, backgroundColor: source.bgColor, border: `1px solid ${source.color}22` }}
+          style={{ width: 40, height: 40, backgroundColor: `${source.color}10`, border: `1px solid ${source.color}22` }}
         >
           <Icon size={20} style={{ color: source.color }} />
         </div>
-        <div>
-          <h1
-            style={{ color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 18, fontWeight: 600 }}
-          >
-            {source.label}
-          </h1>
-          <a
-            href={source.url}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1 hover:underline"
-            style={{ color: "#94a3b8", fontSize: 12, fontFamily: "'Noto Sans SC', sans-serif" }}
-          >
-            {source.url}
-            <ExternalLink size={10} />
-          </a>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h1
+              style={{ color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 18, fontWeight: 600 }}
+            >
+              {source.name}
+            </h1>
+            <span
+              className="px-2 py-0.5 rounded text-xs font-mono"
+              style={{
+                color: source.color,
+                backgroundColor: `${source.color}10`,
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
+            >
+              {source.number}
+            </span>
+          </div>
+          {source.description && (
+            <p style={{ color: "#64748b", fontSize: 12, fontFamily: "'Noto Sans SC', sans-serif", marginTop: 2 }}>
+              {source.description}
+            </p>
+          )}
         </div>
         <div className="ml-auto">
           <motion.a
@@ -283,82 +410,101 @@ export function DataSourcePanel({ sourceId, onBack }: DataSourcePanelProps) {
             }}
           >
             <ExternalLink size={14} />
-            访问数据库
+            访问网站
           </motion.a>
         </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
-        {/* Intro Banner */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="rounded-xl p-5 mb-5"
-          style={{ backgroundColor: source.bgColor, border: `1px solid ${source.color}22` }}
+          className="rounded-xl p-6"
+          style={{ backgroundColor: "#fff", border: "1px solid #e2e8f0" }}
         >
-          <p style={{ color: "#374151", fontSize: 14, fontFamily: "'Noto Sans SC', sans-serif", lineHeight: 1.85 }}>
-            {source.intro}
-          </p>
-        </motion.div>
-
-        {/* Datasets */}
-        <div>
-          <h2
-            className="mb-4"
-            style={{ color: "#1e293b", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 16, fontWeight: 600 }}
-          >
-            数据集
-          </h2>
-          <div className="grid gap-3">
-            {source.datasets.map((dataset, index) => (
-              <motion.div
-                key={dataset.name}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="p-4 rounded-lg"
-                style={{ backgroundColor: "#fff", border: "1px solid #e2e8f0" }}
+          <div className="flex items-start gap-4">
+            <div
+              className="flex items-center justify-center rounded-xl flex-shrink-0"
+              style={{
+                width: 56,
+                height: 56,
+                backgroundColor: `${source.color}10`,
+                border: `1px solid ${source.color}22`,
+              }}
+            >
+              <Icon size={28} style={{ color: source.color }} />
+            </div>
+            <div className="flex-1">
+              <h2
+                className="mb-2"
+                style={{ color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 16, fontWeight: 600 }}
               >
-                <div className="flex items-start justify-between mb-2">
-                  <h3
-                    style={{ color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, fontWeight: 600 }}
-                  >
-                    {dataset.name}
-                  </h3>
+                {source.name}
+              </h2>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
                   <span
-                    className="px-2 py-0.5 rounded text-xs"
-                    style={{ backgroundColor: "#f1f5f9", color: "#64748b", fontFamily: "'Noto Sans SC', sans-serif" }}
+                    className="text-xs px-2 py-0.5 rounded"
+                    style={{
+                      backgroundColor: "#f1f5f9",
+                      color: "#64748b",
+                      fontFamily: "'Noto Sans SC', sans-serif",
+                    }}
                   >
-                    {dataset.frequency}
+                    编号
+                  </span>
+                  <span
+                    className="text-xs font-mono"
+                    style={{
+                      color: source.color,
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {source.number}
                   </span>
                 </div>
-                <p
-                  className="mb-3"
-                  style={{ color: "#64748b", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif", lineHeight: 1.6 }}
-                >
-                  {dataset.desc}
-                </p>
-                <div className="flex items-center gap-4 text-xs" style={{ color: "#94a3b8", fontFamily: "'Noto Sans SC', sans-serif" }}>
-                  <span>覆盖范围: {dataset.coverage}</span>
-                  <span>更新: {dataset.lastUpdated}</span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-xs px-2 py-0.5 rounded"
+                    style={{
+                      backgroundColor: "#f1f5f9",
+                      color: "#64748b",
+                      fontFamily: "'Noto Sans SC', sans-serif",
+                    }}
+                  >
+                    网址
+                  </span>
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs hover:underline flex items-center gap-1"
+                    style={{
+                      color: source.color,
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    {source.url}
+                    <ExternalLink size={10} />
+                  </a>
                 </div>
-                <div className="flex gap-1.5 mt-2.5 flex-wrap">
-                  {dataset.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-0.5 rounded text-xs"
-                      style={{ backgroundColor: `${source.color}11`, color: source.color, fontFamily: "'Noto Sans SC', sans-serif" }}
+                {source.description && (
+                  <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: "#f8fafc" }}>
+                    <p
+                      className="text-sm leading-relaxed"
+                      style={{ color: "#475569", fontFamily: "'Noto Sans SC', sans-serif" }}
                     >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
+                      {source.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

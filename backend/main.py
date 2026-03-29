@@ -3,6 +3,7 @@
 """
 
 from contextlib import asynccontextmanager
+import sys
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,14 +40,33 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.DEBUG else None,
     )
 
-    # CORS 中间件
+    # 测试端点：验证代码是否更新
+    @app.get("/test-debug")
+    async def test_debug():
+        return {"status": "ok", "message": "新代码已加载", "timestamp": "2026-03-29"}
+
+    # 注册 API 路由
+    app.include_router(api_router, prefix=settings.API_PREFIX)
+
+    # 静态文件服务（用于访问上传的文件）
+    app.mount("/storage", StaticFiles(directory="storage"), name="storage")
+
+    # CORS 中间件（最后注册，最先执行）
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_origins=settings.ALLOWED_ORIGINS_LIST,  # 使用列表
         allow_credentials=True,
-        allow_methods=settings.ALLOWED_METHODS,
-        allow_headers=settings.ALLOWED_HEADERS,
+        allow_methods=["*"],  # 允许所有方法
+        allow_headers=["*"],  # 允许所有请求头
+        expose_headers=["*"],  # 暴露所有响应头
     )
+
+    # 测试端点：验证代码是否更新
+    @app.get("/test-debug")
+    async def test_debug():
+        import sys
+        print("\n✅✅✅ 测试端点被调用！新代码已加载！ ✅✅✅\n", file=sys.stderr, flush=True)
+        return {"status": "ok", "message": "新代码已加载", "timestamp": "2026-03-29"}
 
     # 注册 API 路由
     app.include_router(api_router, prefix=settings.API_PREFIX)
