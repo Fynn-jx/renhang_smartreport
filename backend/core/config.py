@@ -111,6 +111,18 @@ class Settings(BaseSettings):
     KNOWLEDGE_RETRIEVAL_TOP_K: int = 5
     KNOWLEDGE_RERANK_ENABLED: bool = True
 
+    # ==================== MinerU 配置 ====================
+    MINERU_API_KEY: str = ""
+    MINERU_BASE_URL: str = "https://mineru.net"
+    MINERU_ENABLED: bool = True  # 是否启用MinerU替代PyMuPDF进行PDF提取
+
+    # ==================== 腾讯云 COS 配置 ====================
+    # 请在环境变量中设置以下值，不要硬编码
+    TENCENT_COS_SECRET_ID: str = ""
+    TENCENT_COS_SECRET_KEY: str = ""
+    TENCENT_COS_REGION: str = "ap-guangzhou"
+    TENCENT_COS_BUCKET: str = ""
+
 
 @lru_cache()
 def get_settings() -> Settings:

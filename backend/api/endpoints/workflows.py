@@ -8,7 +8,7 @@ import uuid
 import json
 from typing import Optional
 from pathlib import Path
-from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, HTTPException, Request
 from fastapi.responses import StreamingResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1164,6 +1164,275 @@ async def run_image_translation(
     return {
         "message": "待实现",
     }
+
+
+@router.post("/mineru-parse")
+async def mineru_parse(
+    file: UploadFile = File(..., description="PDF文件"),
+    model_version: str = Form("vlm", description="模型版本: vlm 或 pipeline"),
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    使用MinerU精准解析API将PDF转换为Markdown
+
+    支持去除页眉、页脚、脚注，保留文档结构
+
+    **参数：**
+    - `file`: PDF文件（必填，最大200MB）
+    - `model_version`: 模型版本，vlm（推荐）或 pipeline
+
+    **返回格式（SSE）：**
+    ```
+    data: {"stage": "uploading", "progress": 10.0, "message": "上传文件..."}
+    data: {"stage": "submitting", "progress": 30.0, "message": "提交解析任务..."}
+    data: {"stage": "processing", "progress": 50.0, "message": "正在解析PDF..."}
+    data: {"stage": "downloading", "progress": 90.0, "message": "下载解析结果..."}
+    data: {"stage": "done", "progress": 100.0, "message": "解析完成"}
+    ```
+    """
+    from services.mineru_service import MineruProgressUpdate
+
+    async def generate_progress_stream():
+        """生成 SSE 进度流"""
+        try:
+            # 保存上传的文件
+            file_content = await file.read()
+            original_filename = file.filename
+
+            saved_path, _, _ = await file_service.save_file(
+                file_content=file_content,
+                original_filename=original_filename,
+                document_type="document",
+            )
+
+            logger.info(f"[MinerU] 开始解析文件: {original_filename}, 路径: {saved_path}")
+
+            # 调用MinerU服务
+            from services.mineru_service import mineru_service
+
+            async def progress_callback(update: MineruProgressUpdate):
+                yield f"data: {update.to_dict()}\n\n"
+
+            async for sse_data in mineru_service.parse_pdf_to_markdown(
+                file_path=saved_path,
+                progress_callback=progress_callback,
+                model_version=model_version,
+            ):
+                yield sse_data
+
+            yield "data: [DONE]\n\n"
+
+        except Exception as e:
+            logger.error(f"[MinerU] 解析失败: {e}")
+            error_update = MineruProgressUpdate(
+                stage="failed",
+                progress=-1,
+                message=f"解析失败: {str(e)}",
+                data={"error": str(e)}
+            )
+            yield f"data: {error_update.to_dict()}\n\n"
+
+    return StreamingResponse(
+        generate_progress_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+@router.post("/mineru-parse/url")
+async def mineru_parse_url(
+    request: Request,
+    model_version: str = Form("vlm", description="模型版本: vlm 或 pipeline"),
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    使用MinerU精准解析API将URL的PDF转换为Markdown
+
+    **参数：**
+    - `pdf_url`: PDF的URL地址（必填）
+
+    **返回格式（SSE）：**
+    ```
+    data: {"stage": "submitting", "progress": 20.0, "message": "提交解析任务..."}
+    data: {"stage": "processing", "progress": 40.0, "message": "正在解析PDF..."}
+    data: {"stage": "downloading", "progress": 80.0, "message": "下载解析结果..."}
+    data: {"stage": "done", "progress": 100.0, "message": "解析完成"}
+    ```
+    """
+    from services.mineru_service import MineruProgressUpdate
+
+    try:
+        body = await request.json()
+        pdf_url = body.get("pdf_url")
+        if not pdf_url:
+            return {"success": False, "error": "pdf_url is required"}
+    except:
+        return {"success": False, "error": "Invalid JSON body"}
+
+    async def generate_progress_stream():
+        """生成 SSE 进度流"""
+        try:
+            from services.mineru_service import mineru_service
+
+            logger.info(f"[MinerU-URL] 开始解析URL: {pdf_url}")
+
+            async def progress_callback(update: MineruProgressUpdate):
+                yield f"data: {update.to_dict()}\n\n"
+
+            async for sse_data in mineru_service.parse_pdf_by_url(
+                pdf_url=pdf_url,
+                progress_callback=progress_callback,
+                model_version=model_version,
+            ):
+                yield sse_data
+
+            yield "data: [DONE]\n\n"
+
+        except Exception as e:
+            logger.error(f"[MinerU-URL] 解析失败: {e}")
+            error_update = MineruProgressUpdate(
+                stage="failed",
+                progress=-1,
+                message=f"解析失败: {str(e)}",
+                data={"error": str(e)}
+            )
+            yield f"data: {error_update.to_dict()}\n\n"
+
+    return StreamingResponse(
+        generate_progress_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+@router.post("/mineru-parse/url/sync")
+async def mineru_parse_url_sync(
+    request: Request,
+    model_version: str = Form("vlm", description="模型版本: vlm 或 pipeline"),
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    使用MinerU精准解析API将URL的PDF转换为Markdown（同步版本）
+
+    **参数：**
+    - `pdf_url`: PDF的URL地址（必填）
+
+    **返回：**
+    ```json
+    {
+        "success": true,
+        "content": "Markdown内容",
+        "stats": {"chars": 5000}
+    }
+    ```
+    """
+    from services.mineru_service import mineru_service
+
+    try:
+        body = await request.json()
+        pdf_url = body.get("pdf_url")
+        if not pdf_url:
+            return {"success": False, "error": "pdf_url is required"}
+    except:
+        return {"success": False, "error": "Invalid JSON body"}
+
+    try:
+        logger.info(f"[MinerU-URL-SYNC] 开始解析URL: {pdf_url}")
+
+        content = await mineru_service.parse_pdf_by_url(
+            pdf_url=pdf_url,
+            progress_callback=None,
+            model_version=model_version,
+        )
+
+        return {
+            "success": True,
+            "content": content,
+            "stats": {
+                "chars": len(content),
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"[MinerU-URL-SYNC] 解析失败: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@router.post("/mineru-parse/sync")
+async def mineru_parse_sync(
+    file: UploadFile = File(..., description="PDF文件"),
+    model_version: str = Form("vlm", description="模型版本: vlm 或 pipeline"),
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    使用MinerU精准解析API将PDF转换为Markdown（同步版本）
+
+    **参数：**
+    - `file`: PDF文件
+    - `model_version`: 模型版本
+
+    **返回：**
+    ```json
+    {
+        "success": true,
+        "content": "Markdown内容",
+        "stats": {"chars": 5000, "pages": 10}
+    }
+    ```
+    """
+    from services.mineru_service import mineru_service
+
+    try:
+        # 保存上传的文件
+        file_content = await file.read()
+        original_filename = file.filename
+
+        saved_path, _, _ = await file_service.save_file(
+            file_content=file_content,
+            original_filename=original_filename,
+            document_type="document",
+        )
+
+        logger.info(f"[MinerU-SYNC] 开始解析文件: {original_filename}")
+
+        # 调用MinerU服务
+        content = await mineru_service.parse_pdf_to_markdown(
+            file_path=saved_path,
+            progress_callback=None,
+            model_version=model_version,
+        )
+
+        return {
+            "success": True,
+            "content": content,
+            "filename": original_filename,
+            "stats": {
+                "chars": len(content),
+                "estimated_pages": len(content) // 3000  # 估算
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"[MinerU-SYNC] 解析失败: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 
 @router.post("/academic-to-official/export-word")

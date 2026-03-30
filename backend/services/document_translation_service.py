@@ -26,6 +26,8 @@ except Exception:
     FITZ_AVAILABLE = False
     logger.warning("[WARNING] PyMuPDF 提取器不可用，请运行: pip install PyMuPDF")
 
+from services.mineru_service import mineru_service
+
 
 class DocumentTranslationService:
     """
@@ -475,6 +477,32 @@ class DocumentTranslationService:
         file_ext = Path(filename).suffix.lower()
 
         if file_ext == ".pdf":
+            # 优先使用 MinerU 进行高质量提取
+            if settings.MINERU_ENABLED and settings.MINERU_API_KEY:
+                try:
+                    import tempfile
+                    import os
+
+                    # 保存到临时文件
+                    with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+                        tmp.write(document_bytes)
+                        tmp_path = tmp.name
+
+                    try:
+                        logger.info(f"[文档翻译] 使用MinerU提取PDF: {filename}")
+                        content = await mineru_service.parse_pdf_to_markdown(
+                            file_path=tmp_path,
+                            progress_callback=None,
+                            model_version="vlm"
+                        )
+                        logger.info(f"[文档翻译] PDF提取成功 (MinerU): {len(content)} 字符")
+                        return content
+                    finally:
+                        os.unlink(tmp_path)
+                except Exception as e:
+                    logger.warning(f"[文档翻译] MinerU PDF提取失败: {e}，回退到PyMuPDF")
+
+            # 使用 PyMuPDF 提取
             if not FITZ_AVAILABLE:
                 raise EnvironmentError(
                     "PyMuPDF 不可用，请先安装 PyMuPDF:\n"

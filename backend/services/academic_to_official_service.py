@@ -21,6 +21,7 @@ from sqlalchemy import select, text
 from core.config import settings
 from services.file_service import file_service
 from services.fitz_extractor import fitz_extractor
+from services.mineru_service import mineru_service
 
 
 class WorkflowStage(Enum):
@@ -733,6 +734,21 @@ Output：只能输出修改后的正文部分
         file_ext = Path(file_path).suffix.lower()
 
         if file_ext == ".pdf":
+            # 优先使用 MinerU 进行高质量提取
+            if settings.MINERU_ENABLED and settings.MINERU_API_KEY:
+                try:
+                    logger.info(f"[思维链] 使用MinerU提取PDF: {file_path}")
+                    content = await mineru_service.parse_pdf_to_markdown(
+                        file_path=full_path,
+                        progress_callback=None,
+                        model_version="vlm"
+                    )
+                    logger.info(f"[思维链] PDF提取成功 (MinerU): {len(content)} 字符")
+                    return content
+                except Exception as e:
+                    logger.warning(f"[思维链] MinerU PDF提取失败: {e}，回退到PyMuPDF")
+
+            # 使用 PyMuPDF 提取
             if fitz_extractor is None:
                 raise EnvironmentError(
                     "PyMuPDF 不可用，请先安装 PyMuPDF:\n"

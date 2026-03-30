@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from services.fitz_extractor import fitz_extractor
+from services.mineru_service import mineru_service
 
 
 class TranslationStage(Enum):
@@ -435,15 +436,48 @@ class TranslationWorkflowService:
             logger.info(f"[文档提取] 纯文本提取完成，长度: {len(text_content)} 字符")
             return text_content.strip()
 
-        # PDF 文件使用 PyMuPDF 提取
+        # PDF 文件提取
         if file_ext == '.pdf':
+            logger.info(f"[文档提取] 检测到 PDF 文件: {filename}")
+
+            # 优先使用 MinerU 进行高质量提取
+            if settings.MINERU_ENABLED and settings.MINERU_API_KEY:
+                try:
+                    import tempfile
+                    import os
+
+                    # 保存到临时文件
+                    with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+                        tmp.write(document_bytes)
+                        tmp_path = tmp.name
+
+                    try:
+                        logger.info(f"[MinerU] 使用MinerU提取PDF: {filename}")
+                        # 调用 MinerU 提取 PDF 为 Markdown
+                        markdown_content = await mineru_service.parse_pdf_to_markdown(
+                            file_path=tmp_path,
+                            progress_callback=None,
+                            model_version="vlm"
+                        )
+
+                        # MinerU 已经去除了页眉页脚，直接使用
+                        logger.info(f"[MinerU] PDF提取完成，长度: {len(markdown_content)} 字符")
+                        return markdown_content
+
+                    finally:
+                        # 清理临时文件
+                        os.unlink(tmp_path)
+
+                except Exception as e:
+                    logger.warning(f"[MinerU] PDF提取失败: {e}，回退到PyMuPDF")
+                    # MinerU失败时回退到PyMuPDF
+
+            # 使用 PyMuPDF 提取
             if fitz_extractor is None:
                 raise EnvironmentError(
                     "PyMuPDF 不可用，请先安装 PyMuPDF:\n"
                     "运行: pip install PyMuPDF"
                 )
-
-            logger.info(f"[文档提取] 检测到 PDF 文件: {filename}")
 
             # 调用 PyMuPDF 提取 PDF 为 Markdown
             extraction_result = fitz_extractor.extract_from_bytes(
