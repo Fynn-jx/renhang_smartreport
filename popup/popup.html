@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>人行智汇</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="图标" class="logo-icon">
+        <h1>人行智汇</h1>
+      </div>
+      <button id="refreshBtn" class="btn-icon" title="刷新">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      </button>
+    </header>
+
+    <div class="stats">
+      <span id="pdfCount">正在扫描...</span>
+      <span id="selectedCount" class="selected-count"></span>
+      <span id="pageUrl" class="page-url"></span>
+    </div>
+
+    <!-- 选择栏（仅列表模式显示） -->
+    <div id="selectionBar" class="selection-bar" style="display: none;">
+      <button id="selectAllBtn" class="btn btn-outline">全选</button>
+    </div>
+
+    <!-- PDF列表区域 -->
+    <div id="listPanel" class="content-panel active">
+      <ul id="pdfList" class="pdf-list"></ul>
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <svg viewBox="0 0 24 24" width="48" height="48"><path fill="#999" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8.5 13c-.83 0-1.5.67-1.5 1.5S7.67 16 8.5 16s1.5-.67 1.5-1.5S9.33 13 8.5 13zm5 0c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/></svg>
+        <p>未发现PDF文件</p>
+      </div>
+      <div id="loadingState" class="loading-state" style="display: none;">
+        <div class="spinner"></div>
+        <p>正在扫描...</p>
+      </div>
+    </div>
+
+
+    <footer class="footer">
+      <div class="action-buttons">
+        <button id="downloadAllBtn" class="btn btn-primary" disabled>批量保存到本地</button>
+        <button id="saveToCloudBtn" class="btn btn-secondary" disabled>批量保存到报告库</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
