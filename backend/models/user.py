@@ -11,6 +11,7 @@ from models.base import Base, UUIDMixin, TimestampMixin
 if TYPE_CHECKING:
     from models.document import Document
     from models.task import Task
+    from models.official_document import OfficialDocument
 
 
 class User(Base, UUIDMixin, TimestampMixin):
@@ -69,6 +70,13 @@ class User(Base, UUIDMixin, TimestampMixin):
 
     tasks: Mapped[List["Task"]] = relationship(
         "Task",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+    )
+
+    official_documents: Mapped[List["OfficialDocument"]] = relationship(
+        "OfficialDocument",
+        foreign_keys="[OfficialDocument.owner_id]",
         back_populates="owner",
         cascade="all, delete-orphan",
     )

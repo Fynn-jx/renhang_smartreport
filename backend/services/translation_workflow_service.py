@@ -438,7 +438,9 @@ class TranslationWorkflowService:
 
         # PDF 文件提取
         if file_ext == '.pdf':
-            logger.info(f"[文档提取] 检测到 PDF 文件: {filename}")
+            logger.info(f"\n{'='*60}")
+            logger.info(f"[PDF提取] 检测到 PDF 文件: {filename}")
+            logger.info(f"{'='*60}\n")
 
             # 优先使用 MinerU 进行高质量提取
             if settings.MINERU_ENABLED and settings.MINERU_API_KEY:
@@ -452,7 +454,12 @@ class TranslationWorkflowService:
                         tmp_path = tmp.name
 
                     try:
-                        logger.info(f"[MinerU] 使用MinerU提取PDF: {filename}")
+                        logger.info(f"\n{'🔷'*30}")
+                        logger.info(f"📄 PDF提取器: MinerU (高质量)")
+                        logger.info(f"{'🔷'*30}\n")
+                        logger.info(f"[MinerU] 正在使用 MinerU 提取 PDF...")
+                        logger.info(f"[MinerU] 文件: {filename}")
+                        logger.info(f"[MinerU] 模型: vlm (视觉语言模型)")
                         # 调用 MinerU 提取 PDF 为 Markdown
                         markdown_content = await mineru_service.parse_pdf_to_markdown(
                             file_path=tmp_path,
@@ -461,7 +468,10 @@ class TranslationWorkflowService:
                         )
 
                         # MinerU 已经去除了页眉页脚，直接使用
-                        logger.info(f"[MinerU] PDF提取完成，长度: {len(markdown_content)} 字符")
+                        logger.info(f"\n{'✅'*30}")
+                        logger.info(f"[MinerU] PDF提取完成！")
+                        logger.info(f"[MinerU] 提取长度: {len(markdown_content)} 字符")
+                        logger.info(f"{'✅'*30}\n")
                         return markdown_content
 
                     finally:
@@ -469,7 +479,10 @@ class TranslationWorkflowService:
                         os.unlink(tmp_path)
 
                 except Exception as e:
-                    logger.warning(f"[MinerU] PDF提取失败: {e}，回退到PyMuPDF")
+                    logger.warning(f"\n{'❌'*30}")
+                    logger.warning(f"[MinerU] PDF提取失败: {e}")
+                    logger.warning(f"[MinerU] 正在回退到 PyMuPDF...")
+                    logger.warning(f"{'❌'*30}\n")
                     # MinerU失败时回退到PyMuPDF
 
             # 使用 PyMuPDF 提取
@@ -478,6 +491,12 @@ class TranslationWorkflowService:
                     "PyMuPDF 不可用，请先安装 PyMuPDF:\n"
                     "运行: pip install PyMuPDF"
                 )
+
+            logger.info(f"\n{'🔶'*30}")
+            logger.info(f"📄 PDF提取器: PyMuPDF (本地)")
+            logger.info(f"{'🔶'*30}\n")
+            logger.info(f"[PyMuPDF] 正在使用 PyMuPDF 提取 PDF...")
+            logger.info(f"[PyMuPDF] 文件: {filename}")
 
             # 调用 PyMuPDF 提取 PDF 为 Markdown
             extraction_result = fitz_extractor.extract_from_bytes(
@@ -491,7 +510,11 @@ class TranslationWorkflowService:
             # 清理内容：移除参考文献部分
             cleaned_content = self._clean_markdown_content(markdown_content)
 
-            logger.info(f"[PyMuPDF] PDF 提取完成，原文长度: {len(markdown_content)}, 清理后长度: {len(cleaned_content)}")
+            logger.info(f"\n{'✅'*30}")
+            logger.info(f"[PyMuPDF] PDF提取完成！")
+            logger.info(f"[PyMuPDF] 原文长度: {len(markdown_content)} 字符")
+            logger.info(f"[PyMuPDF] 清理后长度: {len(cleaned_content)} 字符")
+            logger.info(f"{'✅'*30}\n")
 
             return cleaned_content
 

@@ -8,6 +8,7 @@ from models.base import Base, BaseModel
 from models.user import User
 from models.tag import Tag
 from models.document import Document, DocumentType
+from models.official_document import OfficialDocument, DocumentSource
 from models.task import Task, TaskStatus, TaskType
 from models.image_translation import ImageTranslation, ImageTranslationStatus
 from models.document_translation import DocumentTranslation, DocumentTranslationStatus
@@ -30,6 +31,8 @@ __all__ = [
     "User",
     "Document",
     "DocumentType",
+    "OfficialDocument",
+    "DocumentSource",
     "Tag",
     "Task",
     "TaskStatus",

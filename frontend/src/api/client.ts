@@ -19,6 +19,10 @@ import type {
   WorkflowStagesResponse,
   CountryResearchParams,
   QuarterlyReportParams,
+  ImageTranslation,
+  ImageTranslationUploadResponse,
+  ImageTranslationStatusResponse,
+  ImageTranslationParams,
 } from "./types";
 
 // API 基础配置
@@ -402,6 +406,136 @@ export async function startQuarterlyReport(params: QuarterlyReportParams): Promi
   return response.body;
 }
 
+// ==================== 图片转译 API ====================
+
+/**
+ * 上传图片并进行转译
+ */
+export async function uploadImageForTranslation(params: ImageTranslationParams): Promise<ImageTranslationUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", params.file);
+
+  return uploadRequest<ImageTranslationUploadResponse>("/image-translation/", formData);
+}
+
+/**
+ * 获取图片转译列表
+ */
+export async function fetchImageTranslations(page?: number, pageSize?: number, statusFilter?: string): Promise<ImageTranslation[]> {
+  const queryParams = new URLSearchParams();
+  if (page) queryParams.append("page", page.toString());
+  if (pageSize) queryParams.append("page_size", pageSize.toString());
+  if (statusFilter) queryParams.append("status_filter", statusFilter);
+
+  const queryString = queryParams.toString();
+  return request<ImageTranslation[]>(`/image-translation/${queryString ? `?${queryString}` : ""}`);
+}
+
+/**
+ * 获取单个图片转译详情
+ */
+export async function fetchImageTranslation(translationId: string): Promise<ImageTranslation> {
+  return request<ImageTranslation>(`/image-translation/${translationId}`);
+}
+
+/**
+ * 查询图片转译状态（用于轮询）
+ */
+export async function fetchImageTranslationStatus(translationId: string): Promise<ImageTranslationStatusResponse> {
+  return request<ImageTranslationStatusResponse>(`/image-translation/${translationId}/status`);
+}
+
+/**
+ * 预览转译后的图片
+ * 返回图片URL
+ */
+export function getImagePreviewUrl(translationId: string): string {
+  return getApiUrl(`/image-translation/${translationId}/preview`);
+}
+
+/**
+ * 下载转译后的图片
+ */
+export async function downloadTranslatedImage(translationId: string, filename?: string): Promise<void> {
+  const url = getApiUrl(`/image-translation/${translationId}/download`);
+  const token = getAuthToken();
+
+  const response = await fetch(url, {
+    headers: token ? { "Authorization": `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    throw new Error(`下载失败: ${response.status}`);
+  }
+
+  // 从响应头获取文件名
+  const contentDisposition = response.headers.get("Content-Disposition");
+  let downloadFilename = filename || "translated_image.jpg";
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+    if (match && match[1]) {
+      downloadFilename = match[1].replace(/['"]/g, "");
+    }
+  }
+
+  // 下载文件
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = downloadFilename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
+}
+
+/**
+ * 下载原始图片
+ */
+export async function downloadOriginalImage(translationId: string): Promise<void> {
+  const url = getApiUrl(`/image-translation/${translationId}/original`);
+  const token = getAuthToken();
+
+  const response = await fetch(url, {
+    headers: token ? { "Authorization": `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    throw new Error(`下载失败: ${response.status}`);
+  }
+
+  // 从响应头获取文件名
+  const contentDisposition = response.headers.get("Content-Disposition");
+  let filename = "original_image.jpg";
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+    if (match && match[1]) {
+      filename = match[1].replace(/['"]/g, "");
+    }
+  }
+
+  // 下载文件
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
+}
+
+/**
+ * 删除图片转译记录
+ */
+export async function deleteImageTranslation(translationId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/image-translation/${translationId}`, {
+    method: "DELETE",
+  });
+}
+
 // 导出 API 客户端
 export const api = {
   // 文档
@@ -433,6 +567,16 @@ export const api = {
   // 季度报告
   fetchQuarterlyReportStages,
   startQuarterlyReport,
+
+  // 图片转译
+  uploadImageForTranslation,
+  fetchImageTranslations,
+  fetchImageTranslation,
+  fetchImageTranslationStatus,
+  getImagePreviewUrl,
+  downloadTranslatedImage,
+  downloadOriginalImage,
+  deleteImageTranslation,
 
   // 健康检查
   healthCheck,

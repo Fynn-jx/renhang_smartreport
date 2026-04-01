@@ -477,6 +477,10 @@ class DocumentTranslationService:
         file_ext = Path(filename).suffix.lower()
 
         if file_ext == ".pdf":
+            logger.info(f"\n{'='*60}")
+            logger.info(f"[文档翻译] 检测到 PDF 文件: {filename}")
+            logger.info(f"{'='*60}\n")
+
             # 优先使用 MinerU 进行高质量提取
             if settings.MINERU_ENABLED and settings.MINERU_API_KEY:
                 try:
@@ -489,18 +493,31 @@ class DocumentTranslationService:
                         tmp_path = tmp.name
 
                     try:
-                        logger.info(f"[文档翻译] 使用MinerU提取PDF: {filename}")
+                        logger.info(f"\n{'🔷'*30}")
+                        logger.info(f"📄 PDF提取器: MinerU (高质量)")
+                        logger.info(f"{'🔷'*30}\n")
+                        logger.info(f"[文档翻译] 正在使用 MinerU 提取 PDF...")
+                        logger.info(f"[文档翻译] 文件: {filename}")
+                        logger.info(f"[文档翻译] 模型: vlm (视觉语言模型)")
+
                         content = await mineru_service.parse_pdf_to_markdown(
                             file_path=tmp_path,
                             progress_callback=None,
                             model_version="vlm"
                         )
-                        logger.info(f"[文档翻译] PDF提取成功 (MinerU): {len(content)} 字符")
+
+                        logger.info(f"\n{'✅'*30}")
+                        logger.info(f"[文档翻译] PDF提取完成 (MinerU)！")
+                        logger.info(f"[文档翻译] 提取长度: {len(content)} 字符")
+                        logger.info(f"{'✅'*30}\n")
                         return content
                     finally:
                         os.unlink(tmp_path)
                 except Exception as e:
-                    logger.warning(f"[文档翻译] MinerU PDF提取失败: {e}，回退到PyMuPDF")
+                    logger.warning(f"\n{'❌'*30}")
+                    logger.warning(f"[文档翻译] MinerU PDF提取失败: {e}")
+                    logger.warning(f"[文档翻译] 正在回退到 PyMuPDF...")
+                    logger.warning(f"{'❌'*30}\n")
 
             # 使用 PyMuPDF 提取
             if not FITZ_AVAILABLE:
@@ -509,9 +526,21 @@ class DocumentTranslationService:
                     "运行: pip install PyMuPDF"
                 )
 
+            logger.info(f"\n{'🔶'*30}")
+            logger.info(f"📄 PDF提取器: PyMuPDF (本地)")
+            logger.info(f"{'🔶'*30}\n")
+            logger.info(f"[文档翻译] 正在使用 PyMuPDF 提取 PDF...")
+            logger.info(f"[文档翻译] 文件: {filename}")
+
             # 使用 PyMuPDF 提取 PDF
             result = fitz_extractor.extract_from_bytes(document_bytes, filename)
-            return result.get("content", "")
+            content = result.get("content", "")
+
+            logger.info(f"\n{'✅'*30}")
+            logger.info(f"[文档翻译] PDF提取完成 (PyMuPDF)！")
+            logger.info(f"[文档翻译] 提取长度: {len(content)} 字符")
+            logger.info(f"{'✅'*30}\n")
+            return content
 
         elif file_ext in {".txt", ".md"}:
             # 纯文本文件直接读取

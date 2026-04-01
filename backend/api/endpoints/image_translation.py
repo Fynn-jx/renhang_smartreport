@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +26,7 @@ router = APIRouter()
 
 @router.post("/", response_model=ResponseModel[ImageTranslationUploadResponse])
 async def upload_and_translate_image(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="图片文件"),
     db: AsyncSession = Depends(get_db),
     owner_id: str = Depends(get_current_user_id),
@@ -66,13 +67,10 @@ async def upload_and_translate_image(
             db=db,
         )
 
-        # 5. 启动后台异步处理（不阻塞 HTTP 响应）
-        import asyncio
-
-        asyncio.create_task(
-            image_translation_service.process_translation_background(
-                translation_id=str(translation.id),
-            )
+        # 5. 添加后台任务（使用 FastAPI BackgroundTasks）
+        background_tasks.add_task(
+            image_translation_service.process_translation_background,
+            translation_id=str(translation.id),
         )
 
         # 6. 立即返回响应（不等待转译完成）
@@ -277,12 +275,14 @@ async def preview_translated_image(
                 detail="转译图片尚未生成",
             )
 
-        # 检查文件是否存在
-        image_path = Path(translation.translated_image_path)
+        # 使用 file_service 获取完整路径
+        from services.file_service import file_service
+        image_path = file_service.get_full_path(translation.translated_image_path)
+
         if not image_path.exists():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="图片文件不存在",
+                detail=f"图片文件不存在: {translation.translated_image_path}",
             )
 
         # 返回图片文件
@@ -335,12 +335,14 @@ async def download_translated_image(
                 detail="转译图片尚未生成",
             )
 
-        # 检查文件是否存在
-        image_path = Path(translation.translated_image_path)
+        # 使用 file_service 获取完整路径
+        from services.file_service import file_service
+        image_path = file_service.get_full_path(translation.translated_image_path)
+
         if not image_path.exists():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="图片文件不存在",
+                detail=f"图片文件不存在: {translation.translated_image_path}",
             )
 
         # 返回图片文件（下载）

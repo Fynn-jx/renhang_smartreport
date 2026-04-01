@@ -277,6 +277,50 @@ export interface QuarterlyReportProgressUpdate {
   };
 }
 
+// ==================== 图片转译相关类型 ====================
+
+// 图片转译状态
+export type ImageTranslationStatus = "pending" | "processing" | "completed" | "failed";
+
+// 图片转译上传响应
+export interface ImageTranslationUploadResponse {
+  translation_id: string;
+  filename: string;
+  status: ImageTranslationStatus;
+  message: string;
+}
+
+// 图片转译响应
+export interface ImageTranslation {
+  id: string;
+  original_filename: string;
+  status: ImageTranslationStatus;
+  original_image_path?: string;
+  translated_image_path?: string;
+  mime_type?: string;
+  error_message?: string;
+  progress?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// 图片转译状态响应
+export interface ImageTranslationStatusResponse {
+  translation_id: string;
+  status: ImageTranslationStatus;
+  message: string;
+  created_at: string;
+  updated_at: string;
+  preview_url?: string;
+  download_url?: string;
+  error?: string;
+}
+
+// 图片转译上传参数
+export interface ImageTranslationParams {
+  file: File;
+}
+
 // ==================== 工作流通用类型 ====================
 
 // 工作流阶段信息

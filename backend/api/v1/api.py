@@ -5,7 +5,7 @@ API v1 主路由
 
 from fastapi import APIRouter
 
-from api.endpoints import documents, tasks, knowledge, workflows, storage, image_translation, document_translation
+from api.endpoints import documents, tasks, knowledge, workflows, storage, image_translation, document_translation, official_documents
 
 # 创建主路由
 api_router = APIRouter()
@@ -44,13 +44,19 @@ api_router.include_router(
 api_router.include_router(
     image_translation.router,
     prefix="/image-translation",
-    tags=["图片���译"],
+    tags=["图片转译"],
 )
 
 api_router.include_router(
     document_translation.router,
     prefix="/document-translation",
     tags=["公文翻译"],
+)
+
+api_router.include_router(
+    official_documents.router,
+    prefix="/official-documents",
+    tags=["公文库"],
 )
 
 

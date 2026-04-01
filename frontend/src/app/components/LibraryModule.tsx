@@ -154,7 +154,7 @@ function StatusBadge({ status }: { status: Doc["aiStatus"] }) {
 }
 
 // ─── More Vertical Button with Delete Menu ─────────────────────────────────────
-function MoreVerticalButton({ docId, onDelete }: { docId: number; onDelete: (docId: number) => void }) {
+function MoreVerticalButton({ docId, onDelete }: { docId: string; onDelete: (docId: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -731,7 +731,7 @@ function FilterPanel({
 }
 
 // ���── State A: Full Table View ──────────────────────────────────────────────────
-function TableView({ onDocClick, docs, onDelete, onUpload }: { onDocClick: (doc: Doc) => void; docs: Doc[]; onDelete: (docId: number) => void; onUpload: (files: FileList) => void }) {
+function TableView({ onDocClick, docs, onDelete, onUpload }: { onDocClick: (doc: Doc) => void; docs: Doc[]; onDelete: (docId: string) => void; onUpload: (files: FileList) => void }) {
   const [searchVal, setSearchVal] = useState("");
   const [selectedSources, setSelectedSources] = useState<Source[]>([]);
   const [selectedDateRange, setSelectedDateRange] = useState<DateFilter>("全部");
@@ -913,7 +913,7 @@ function TableView({ onDocClick, docs, onDelete, onUpload }: { onDocClick: (doc:
 }
 
 // ─── State B: Narrow List ──────────────────────────────────────────────────────
-function NarrowList({ selected, onSelect, docs, onDelete }: { selected: Doc | null; onSelect: (doc: Doc) => void; docs: Doc[]; onDelete: (docId: number) => void }) {
+function NarrowList({ selected, onSelect, docs, onDelete }: { selected: Doc | null; onSelect: (doc: Doc) => void; docs: Doc[]; onDelete: (docId: string) => void }) {
   return (
     <div className="h-full overflow-y-auto flex flex-col" style={{ scrollbarWidth: "none" }}>
       <div className="px-3 py-3 flex-shrink-0" style={{ borderBottom: "1px solid #f1f5f9" }}>
@@ -1122,6 +1122,10 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState<string>("");
   const [extracting, setExtracting] = useState(false);
+
+  // 写作模式可编辑状态
+  const [isWriteEditing, setIsWriteEditing] = useState(false);
+  const [editedWriteContent, setEditedWriteContent] = useState<string>("");
 
   // 第一步：提取文档内容
   const extractDocumentContent = async () => {
@@ -1412,14 +1416,26 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
             }
 
             // 写作模式：处理生成的内容
-            if (data.content) {
-              accumulatedText += data.content;
-              setDisplayedText(accumulatedText);
-            }
+            if (mode === "write") {
+              // 处理流式内容
+              if (data.content) {
+                accumulatedText += data.content;
+                setDisplayedText(accumulatedText);
+              }
 
-            // 处理完整内容（一次性返回的情况）
-            if (data.output) {
-              setDisplayedText(data.output);
+              // 处理完整内容（一次性返回的情况）
+              if (data.output) {
+                setDisplayedText(data.output);
+              }
+
+              // 处理完成时的最终内容
+              if (data.stage === "completed" && data.data?.final_content) {
+                setDisplayedText(data.data.final_content);
+                setEditedWriteContent(data.data.final_content);
+                setGenerating(false);
+                setGenerated(true);
+                continue;
+              }
             }
 
             // 处理错误
@@ -1451,7 +1467,10 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
 
   // 导出为 Word
   const handleExportWord = async () => {
-    if (!displayedText) {
+    // 根据模式选择要导出的内容
+    const contentToExport = mode === "write" ? editedWriteContent : displayedText;
+
+    if (!contentToExport) {
       setError("没有可导出的内容");
       return;
     }
@@ -1460,7 +1479,7 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
       const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
       const formData = new FormData();
-      formData.append("content", displayedText);
+      formData.append("content", contentToExport);
       formData.append("filename", `${doc?.title || "结果"}.docx`);
 
       const response = await fetch(`${API_BASE}/api/v1/workflows/academic-to-official/export-word`, {
@@ -1530,7 +1549,7 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
         </div>
       </div>
 
-      <ThinkingChain active={generating || generated} progressSteps={progressSteps} />
+      <ThinkingChain active={(generating || generated) && !extracting} progressSteps={progressSteps} />
 
       {/* 错误显示 */}
       {error && (
@@ -1624,10 +1643,22 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
         </div>
       )}
 
-      {/* 写作模式：保持原有界面 */}
+      {/* 写作模式：生成中/可编辑界面 */}
       {mode === "write" && (
         <div className="flex-1 overflow-auto p-4">
-          {displayedText ? (
+          {generating && !displayedText ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <motion.div
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.8, repeat: Infinity }}
+                  className="w-8 h-8 rounded-full border-2 mx-auto mb-3"
+                  style={{ borderColor: "#9b1c1c", borderTopColor: "transparent" }}
+                />
+                <p style={{ color: "#94a3b8", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif" }}>AI 引擎正在思考与生成……</p>
+              </div>
+            </div>
+          ) : displayedText && !isWriteEditing ? (
             <div style={{ fontFamily: "'Noto Serif SC', 'SimSun', serif", fontSize: 14, lineHeight: 2.1, color: "#1e293b", whiteSpace: "pre-wrap" }}>
               {displayedText}
               {generating && (
@@ -1638,6 +1669,22 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
                 />
               )}
             </div>
+          ) : displayedText && isWriteEditing ? (
+            <textarea
+              value={editedWriteContent}
+              onChange={(e) => setEditedWriteContent(e.target.value)}
+              className="w-full h-full p-4 rounded-lg resize-none focus:outline-none focus:ring-2"
+              style={{
+                fontFamily: "'Noto Serif SC', 'SimSun', serif",
+                fontSize: 14,
+                lineHeight: 2,
+                color: "#1e293b",
+                backgroundColor: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                minHeight: 400
+              }}
+              placeholder="生成的公文内容将显示在这里..."
+            />
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
@@ -1707,8 +1754,74 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
         </motion.div>
       )}
 
-      {/* 写作模式或翻译完成：导出按钮 */}
-      {((mode === "write" && generated) || (mode === "translate" && generated && !isEditing)) && (
+      {/* 写作模式：编辑和导出按钮 */}
+      {mode === "write" && generated && !isWriteEditing && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex-shrink-0 px-4 py-3 flex justify-between items-center"
+          style={{ borderTop: "1px solid #e2e8f0" }}
+        >
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              setEditedWriteContent(displayedText);
+              setIsWriteEditing(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg"
+            style={{ border: "1px solid #e2e8f0", color: "#64748b", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13 }}
+          >
+            <PenLine size={14} />
+            编辑内容
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleExportWord}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-white"
+            style={{ backgroundColor: "#9b1c1c", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13, boxShadow: "0 1px 4px rgba(155,28,28,0.3)" }}
+          >
+            <Download size={14} />
+            导出为 Word
+          </motion.button>
+        </motion.div>
+      )}
+
+      {/* 写作模式：编辑确认按钮 */}
+      {mode === "write" && isWriteEditing && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex-shrink-0 px-4 py-3 flex justify-between items-center"
+          style={{ borderTop: "1px solid #e2e8f0" }}
+        >
+          <button
+            onClick={() => setIsWriteEditing(false)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg"
+            style={{ border: "1px solid #e2e8f0", color: "#64748b", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13 }}
+          >
+            <X size={14} />
+            取消
+          </button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              setDisplayedText(editedWriteContent);
+              setIsWriteEditing(false);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-white"
+            style={{ backgroundColor: "#16a34a", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13, boxShadow: "0 1px 4px rgba(22,163,74,0.3)" }}
+          >
+            <CheckCircle2 size={14} />
+            确认修改
+          </motion.button>
+        </motion.div>
+      )}
+
+      {/* 翻译模式：完成导出按钮 */}
+      {mode === "translate" && generated && !isEditing && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

@@ -59,13 +59,13 @@ class Settings(BaseSettings):
 
     # ==================== AI 服务配置 ====================
     # 硅基流动 DeepSeek
-    SILICONFLOW_API_KEY: str = "sk-kshvajvqaupzrjoqxoclqtebvtafncsixxanhagknpsgggho"
+    SILICONFLOW_API_KEY: str
     SILICONFLOW_BASE_URL: str = "https://api.siliconflow.cn/v1"
     DEEPSEEK_MODEL: str = "Pro/deepseek-ai/DeepSeek-V3"
     DEEPSEEK_R1_MODEL: str = "deepseek-ai/DeepSeek-R1"
 
     # OpenRouter (图片转译)
-    OPENROUTER_API_KEY: str = "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"
+    OPENROUTER_API_KEY: str
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     OPENROUTER_IMAGE_MODEL: str = "google/gemini-3-pro-image-preview"
 

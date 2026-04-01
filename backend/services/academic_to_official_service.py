@@ -485,7 +485,7 @@ Output：只能输出修改后的正文部分
             }
 
             # ========== 阶段1: 文档提取 ==========
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.DOCUMENT_EXTRACTION,
                 "正在提取文档内容...",
                 5,
@@ -496,7 +496,7 @@ Output：只能输出修改后的正文部分
             original_text = await self._extract_document(file_path)
             context["original_text"] = original_text
 
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.DOCUMENT_EXTRACTION,
                 f"文档提取完成，共 {len(original_text)} 字符",
                 10,
@@ -505,7 +505,7 @@ Output：只能输出修改后的正文部分
             )
 
             # ========== 阶段2: 知识检索 ==========
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.KNOWLEDGE_RETRIEVAL,
                 "正在检索相关知识库内容...",
                 15,
@@ -515,7 +515,7 @@ Output：只能输出修改后的正文部分
 
             knowledge_context = await self._retrieve_knowledge(original_text, db)
 
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.KNOWLEDGE_RETRIEVAL,
                 f"知识检索完成，检索到 {len(knowledge_context)} 条相关内容",
                 20,
@@ -524,7 +524,7 @@ Output：只能输出修改后的正文部分
             )
 
             # ========== 阶段3: 大纲生成 ==========
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.OUTLINE_GENERATION,
                 "正在生成公文大纲...",
                 25,
@@ -535,7 +535,7 @@ Output：只能输出修改后的正文部分
             outline = await self._generate_outline(original_text, knowledge_context)
             context["outline"] = outline
 
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.OUTLINE_GENERATION,
                 "公文大纲生成完成",
                 30,
@@ -544,7 +544,7 @@ Output：只能输出修改后的正文部分
             )
 
             # ========== 阶段4: 参数提取（提取章节标题） ==========
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.PARAMETER_EXTRACTION,
                 "正在提取章节标题...",
                 35,
@@ -555,7 +555,7 @@ Output：只能输出修改后的正文部分
             chapter_titles = await self._extract_chapter_titles(outline)
             context["chapter_titles"] = chapter_titles
 
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.PARAMETER_EXTRACTION,
                 f"提取到 {len(chapter_titles)} 个章节标题",
                 40,
@@ -567,7 +567,7 @@ Output：只能输出修改后的正文部分
             )
 
             # ========== 阶段5: 迭代写作（并发处理） ==========
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.CHAPTER_WRITING,
                 f"开始写作 {len(chapter_titles)} 个章节...",
                 45,
@@ -582,7 +582,7 @@ Output：只能输出修改后的正文部分
             )
             context["chapters_content"] = chapters_content
 
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.CHAPTER_WRITING,
                 f"所有章节写作完成",
                 65,
@@ -591,7 +591,7 @@ Output：只能输出修改后的正文部分
             )
 
             # ========== 阶段6: 模板转换 ==========
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.TEMPLATE_TRANSFORM,
                 "正在整合章节内容...",
                 70,
@@ -601,7 +601,7 @@ Output：只能输出修改后的正文部分
 
             combined_content = self._transform_template(chapters_content)
 
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.TEMPLATE_TRANSFORM,
                 "章节内容整合完成",
                 75,
@@ -610,7 +610,7 @@ Output：只能输出修改后的正文部分
             )
 
             # ========== 阶段7: 内容整合 ==========
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.CONTENT_INTEGRATION,
                 "正在进行内容整合和润色...",
                 80,
@@ -631,7 +631,7 @@ Output：只能输出修改后的正文部分
 
             context["integrated_content"] = integrated_content
 
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.CONTENT_INTEGRATION,
                 "内容整合完成",
                 90,
@@ -640,7 +640,7 @@ Output：只能输出修改后的正文部分
             )
 
             # ========== 阶段8: 最终调整 ==========
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.FINAL_ADJUSTMENT,
                 "正在进行最终格式调整...",
                 92,
@@ -651,7 +651,7 @@ Output：只能输出修改后的正文部分
             final_content = await self._final_adjustment(integrated_content)
             context["final_content"] = final_content
 
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.FINAL_ADJUSTMENT,
                 "最终调整完成",
                 95,
@@ -660,7 +660,7 @@ Output：只能输出修改后的正文部分
             )
 
             # ========== 完成 ==========
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.COMPLETED,
                 "学术报告转公文完成！",
                 100,
@@ -675,11 +675,9 @@ Output：只能输出修改后的正文部分
                 progress_callback
             )
 
-            return context
-
         except Exception as e:
             logger.error(f"[ERROR] 工作流执行失败: {e}")
-            await self._emit_progress(
+            yield await self._emit_progress(
                 WorkflowStage.FAILED,
                 f"处理失败: {str(e)}",
                 -1,
@@ -694,9 +692,9 @@ Output：只能输出修改后的正文部分
         message: str,
         progress: float,
         data: Dict[str, Any],
-        callback: Optional[Callable[[ProgressUpdate], None]],
+        callback: Optional[Callable[[ProgressUpdate], None]] = None,
     ):
-        """发送进度更新"""
+        """发送进度更新（生成器）"""
         update = ProgressUpdate(
             stage=stage,
             stage_name=stage.value,
@@ -717,11 +715,16 @@ Output：只能输出修改后的正文部分
             else:
                 callback(update)
 
+        # 返回 update（让调用者 yield）
+        return update
+
     # ========== 具体实现方法 ==========
 
     async def _extract_document(self, file_path: str) -> str:
         """提取文档内容"""
-        logger.info(f"[思维链] 开始提取文档: {file_path}")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"[公文写作] 开始提取文档: {file_path}")
+        logger.info(f"{'='*60}\n")
 
         full_path = file_service.get_full_path(file_path)
         if not full_path.exists():
@@ -737,16 +740,29 @@ Output：只能输出修改后的正文部分
             # 优先使用 MinerU 进行高质量提取
             if settings.MINERU_ENABLED and settings.MINERU_API_KEY:
                 try:
-                    logger.info(f"[思维链] 使用MinerU提取PDF: {file_path}")
+                    logger.info(f"\n{'🔷'*30}")
+                    logger.info(f"📄 PDF提取器: MinerU (高质量)")
+                    logger.info(f"{'🔷'*30}\n")
+                    logger.info(f"[公文写作] 正在使用 MinerU 提取 PDF...")
+                    logger.info(f"[公文写作] 文件: {file_path}")
+                    logger.info(f"[公文写作] 模型: vlm (视觉语言模型)")
+
                     content = await mineru_service.parse_pdf_to_markdown(
                         file_path=full_path,
                         progress_callback=None,
                         model_version="vlm"
                     )
-                    logger.info(f"[思维链] PDF提取成功 (MinerU): {len(content)} 字符")
+
+                    logger.info(f"\n{'✅'*30}")
+                    logger.info(f"[公文写作] PDF提取完成 (MinerU)！")
+                    logger.info(f"[公文写作] 提取长度: {len(content)} 字符")
+                    logger.info(f"{'✅'*30}\n")
                     return content
                 except Exception as e:
-                    logger.warning(f"[思维链] MinerU PDF提取失败: {e}，回退到PyMuPDF")
+                    logger.warning(f"\n{'❌'*30}")
+                    logger.warning(f"[公文写作] MinerU PDF提取失败: {e}")
+                    logger.warning(f"[公文写作] 正在回退到 PyMuPDF...")
+                    logger.warning(f"{'❌'*30}\n")
 
             # 使用 PyMuPDF 提取
             if fitz_extractor is None:
@@ -755,12 +771,22 @@ Output：只能输出修改后的正文部分
                     "运行: pip install PyMuPDF"
                 )
 
+            logger.info(f"\n{'🔶'*30}")
+            logger.info(f"📄 PDF提取器: PyMuPDF (本地)")
+            logger.info(f"{'🔶'*30}\n")
+            logger.info(f"[公文写作] 正在使用 PyMuPDF 提取 PDF...")
+            logger.info(f"[公文写作] 文件: {file_path}")
+
             result = fitz_extractor.extract_from_bytes(file_bytes, Path(file_path).name)
             content = result.get("content", "")
-            logger.info(f"[思维链] PDF提取成功 (PyMuPDF): {result.get('paragraphs', 0)} 个段落")
+
+            logger.info(f"\n{'✅'*30}")
+            logger.info(f"[公文写作] PDF提取完成 (PyMuPDF)！")
+            logger.info(f"[公文写作] 提取段落数: {result.get('paragraphs', 0)} 个")
+            logger.info(f"{'✅'*30}\n")
         elif file_ext in {".txt", ".md"}:
             content = file_bytes.decode("utf-8", errors="ignore")
-            logger.info(f"[思维链] 文本文件提取成功")
+            logger.info(f"[公文写作] 文本文件提取完成，长度: {len(content)} 字符")
         else:
             raise ValueError(f"不支持的文件类型: {file_ext}")
 
@@ -912,15 +938,6 @@ Output：只能输出修改后的正文部分
             """带并发限制的写作函数"""
             async with semaphore:
                 logger.info(f"[思维链] 开始写作第 {chapter.index + 1}/{chapter.total} 章: {chapter.title}")
-
-                # 发送进度更新
-                await self._emit_progress(
-                    WorkflowStage.CHAPTER_WRITING,
-                    f"正在写作第 {chapter.index + 1}/{chapter.total} 章: {chapter.title}",
-                    45 + (chapter.index / chapter.total) * 20,
-                    {"current_chapter": chapter.index + 1, "total": chapter.total, "title": chapter.title},
-                    progress_callback
-                )
 
                 content = await self._write_single_chapter(article_topic, chapter.title)
 

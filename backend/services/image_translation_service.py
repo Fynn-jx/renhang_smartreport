@@ -8,7 +8,7 @@ import base64
 from pathlib import Path
 from typing import Optional, Tuple
 
-from openai import AsyncOpenAI
+from openai import OpenAI
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -27,8 +27,8 @@ class ImageTranslationService:
         self.api_key = settings.OPENROUTER_API_KEY
         self.base_url = settings.OPENROUTER_BASE_URL
         self.model = settings.OPENROUTER_IMAGE_MODEL
-        # 创建 OpenAI 客户端（用于调用 OpenRouter）
-        self.client = AsyncOpenAI(
+        # 创建 OpenAI 客户端（用于调用 OpenRouter）- 同步客户端
+        self.client = OpenAI(
             base_url=self.base_url,
             api_key=self.api_key,
         )
@@ -140,6 +140,10 @@ class ImageTranslationService:
         Returns:
             更新后的转译任务对象
         """
+        logger.info(f"\n{'='*60}")
+        logger.info(f"[图片转译] 开始处理转译任务: {translation_id}")
+        logger.info(f"{'='*60}\n")
+
         try:
             # 1. 获取转译任务
             result = await db.execute(
@@ -181,8 +185,10 @@ class ImageTranslationService:
             with open(original_path, "rb") as f:
                 image_bytes = f.read()
 
-            # 4. 调用 OpenRouter API 进行转译
-            translated_image_bytes = await self._call_openrouter_api(image_bytes)
+            # 4. 调用 OpenRouter API 进行转译（同步调用）
+            logger.info(f"[图片转译] 准备调用 OpenRouter API，图片大小: {len(image_bytes)} 字节")
+            translated_image_bytes = self._call_openrouter_api(image_bytes)
+            logger.info(f"[图片转译] ✅ OpenRouter API 调用成功，返回图片大小: {len(translated_image_bytes)} 字节")
 
             # 5. 保存转译后的图片
             translated_filename = f"translated_{translation.original_filename}"
@@ -212,7 +218,7 @@ class ImageTranslationService:
 
             raise
 
-    async def _call_openrouter_api(self, image_bytes: bytes) -> bytes:
+    def _call_openrouter_api(self, image_bytes: bytes) -> bytes:
         """
         调用 OpenRouter API 进行图片转译
 
@@ -222,16 +228,21 @@ class ImageTranslationService:
         Returns:
             转译后的图片字节
         """
+        logger.info(f"\n{'='*60}")
+        logger.info(f"[OpenRouter API] 开始调用，图片大小: {len(image_bytes)} 字节")
+        logger.info(f"[OpenRouter API] 使用模型: {self.model}")
+        logger.info(f"{'='*60}\n")
+
         try:
             # 将图片转换为 base64
             image_base64 = base64.b64encode(image_bytes).decode("utf-8")
             mime_type = self._detect_mime_type(image_bytes)
             data_url = f"data:{mime_type};base64,{image_base64}"
 
-            # 调用 OpenRouter API（使用 OpenAI 客户端）
+            # 调用 OpenRouter API（使用 OpenAI 客户端）- 同步调用
             logger.info(f"[INFO] 正在调用 OpenRouter API，模型: {self.model}")
 
-            completion = await self.client.chat.completions.create(
+            completion = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{
                     "role": "user",
@@ -253,38 +264,51 @@ class ImageTranslationService:
                         }
                     ]
                 }],
+                max_tokens=1000,  # 设置较小的 max_tokens 以节省费用
                 extra_headers={
                     "HTTP-Referer": "https://docwriting.system",
                     "X-Title": "DocWriting AI System"
                 },
-                extra_body={"modalities": ["image"]},
+                extra_body={
+                    "modalities": ["image", "text"]
+                },
                 timeout=300.0
             )
 
             logger.info(f"[INFO] OpenRouter API 调用成功")
 
-            # 解析响应，提取图片
-            if completion.choices and len(completion.choices) > 0:
-                message = completion.choices[0].message
+            # 调试：打印完整响应
+            logger.info(f"[DEBUG] completion 类型: {type(completion)}")
+            logger.info(f"[DEBUG] choices 数量: {len(completion.choices)}")
 
-                # 获取内容
-                if message.content:
-                    content = message.content
+            # 按照官方文档解析响应
+            response = completion.choices[0].message
+            logger.info(f"[DEBUG] response 类型: {type(response)}")
+            logger.info(f"[DEBUG] response.content: {response.content}")
+            logger.info(f"[DEBUG] response.images: {getattr(response, 'images', '属性不存在')}")
+            logger.info(f"[DEBUG] response 所有属性: {dir(response)}")
 
-                    # 处理不同的响应格式
-                    if isinstance(content, str):
-                        # 可能是 base64 编码的图片
-                        if content.startswith("data:image"):
-                            # data:image/png;base64,...
-                            _, base64_data = content.split(",", 1)
-                            logger.info(f"[INFO] 成功提取转译后的图片（base64 格式）")
-                            return base64.b64decode(base64_data)
-                        else:
-                            # 纯 base64
-                            logger.info(f"[INFO] 成功提取转译后的图片（纯 base64 格式）")
-                            return base64.b64decode(content)
+            # 检查是否有 images 数组
+            if response.images:
+                logger.info(f"[INFO] 找到 {len(response.images)} 张图片")
+                for image in response.images:
+                    logger.info(f"[DEBUG] image 类型: {type(image)}, 内容: {image}")
+                    # 提取 base64 data URL（严格按照官方文档格式）
+                    image_url = image['image_url']['url']
+                    logger.info(f"[INFO] 成功提取转译后的图片，URL长度: {len(image_url)}")
+
+                    # 处理 data:image/xxx;base64, 格式
+                    if image_url.startswith("data:image"):
+                        _, base64_data = image_url.split(",", 1)
+                        return base64.b64decode(base64_data)
+                    else:
+                        # 纯 base64
+                        return base64.b64decode(image_url)
 
             # 如果没有返回图片，抛出错误
+            logger.error(f"[ERROR] API 未返回图片")
+            logger.error(f"[ERROR] response.images: {getattr(response, 'images', None)}")
+            logger.error(f"[ERROR] response.content: {response.content[:500] if response.content else None}")
             raise ValueError("API did not return an image in the expected format")
 
         except Exception as e:
