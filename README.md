@@ -83,7 +83,7 @@ const CLOUD_CONFIG = {
 
 | 快捷键 | 功能 |
 |--------|------|
-| `Ctrl+Shift+P` | 打开PDF助手 |
+| `Ctrl+Shift+P` | 打开插件 |
 | `Ctrl+Shift+S` | 扫描页面PDF |
 | `Ctrl+Shift+D` | 下载页面所有PDF |
 
