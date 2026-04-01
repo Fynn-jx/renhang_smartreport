@@ -45,6 +45,16 @@ class DocumentService:
             创建的文档对象
         """
         try:
+            # 0. 先计算哈希检查是否已存在
+            file_hash_check = file_service.get_file_hash(file_content)
+            existing_result = await db.execute(
+                select(Document).where(Document.file_hash == file_hash_check)
+            )
+            existing_doc = existing_result.scalar_one_or_none()
+            if existing_doc:
+                logger.info(f"[OK] 文档已存在（哈希重复）: {existing_doc.id} - {existing_doc.title}")
+                return existing_doc
+
             # 1. 保存文件
             file_path, file_hash, file_size = await file_service.save_file(
                 file_content=file_content,
@@ -117,6 +127,18 @@ class DocumentService:
             return document
 
         except Exception as e:
+            # 处理并发插入导致的唯一约束冲突
+            if "duplicate key" in str(e).lower() or "uniqueviolation" in str(e).lower():
+                logger.warning(f"[WARNING] 并发插入冲突，返回已存在的文档")
+                await db.rollback()
+                # 重新查询已存在的文档
+                file_hash_check = file_service.get_file_hash(file_content)
+                existing_result = await db.execute(
+                    select(Document).where(Document.file_hash == file_hash_check)
+                )
+                existing_doc = existing_result.scalar_one_or_none()
+                if existing_doc:
+                    return existing_doc
             logger.error(f"[ERROR] 文档创建失败: {e}")
             await db.rollback()
             raise
@@ -143,8 +165,8 @@ class DocumentService:
                 select(Document)
                 .where(
                     and_(
-                        Document.id == document_id,
-                        Document.owner_id == owner_id,
+                        Document.id == str(document_id),
+                        Document.owner_id == str(owner_id),
                     )
                 )
                 .options(selectinload(Document.tags))
