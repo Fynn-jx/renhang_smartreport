@@ -59,6 +59,8 @@ async function request<T>(
     const response = await fetch(url, {
       ...options,
       headers,
+      // 禁用缓存，确保获取最新数据
+      cache: "no-store",
     });
 
     // 处理 204 No Content
@@ -536,6 +538,106 @@ export async function deleteImageTranslation(translationId: string): Promise<{ m
   });
 }
 
+// ==================== 公文库 API ====================
+
+/**
+ * 获取公文列表
+ */
+export async function fetchOfficialDocuments(params?: {
+  page?: number;
+  page_size?: number;
+  source?: string;
+  keyword?: string;
+  sort_by?: string;
+  sort_order?: string;
+}): Promise<{
+  items: Array<{
+    id: string;
+    title: string;
+    source: string;
+    created_at: number;
+    description: string | null;
+    document_type: string;
+    file_size: number;
+    file_path: string;
+    content: string | null;
+    content_preview: string | null;
+  }>;
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}> {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.append("page", params.page.toString());
+  if (params?.page_size) queryParams.append("page_size", params.page_size.toString());
+  if (params?.source) queryParams.append("source", params.source);
+  if (params?.keyword) queryParams.append("keyword", params.keyword);
+  if (params?.sort_by) queryParams.append("sort_by", params.sort_by);
+  if (params?.sort_order) queryParams.append("sort_order", params.sort_order);
+
+  const queryString = queryParams.toString();
+  return request<{ items: any[]; total: number; page: number; page_size: number; total_pages: number }>(
+    `/official-documents/${queryString ? `?${queryString}` : ""}`
+  );
+}
+
+/**
+ * 删除公文
+ */
+export async function deleteOfficialDocument(documentId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/official-documents/${documentId}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * 下载公文
+ */
+export async function downloadOfficialDocument(documentId: string, filename: string): Promise<void> {
+  const url = getApiUrl(`/official-documents/${documentId}/download`);
+  const token = getAuthToken();
+
+  const response = await fetch(url, {
+    headers: token ? { "Authorization": `Bearer ${token}` } : {},
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`下载失败: ${response.status}`);
+  }
+
+  // 下载文件
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
+}
+
+/**
+ * 上传公文
+ */
+export async function uploadOfficialDocument(params: {
+  file: File;
+  title: string;
+  description?: string;
+  source: string;
+}): Promise<any> {
+  const formData = new FormData();
+  formData.append("file", params.file);
+  formData.append("title", params.title);
+  if (params.description) formData.append("description", params.description);
+  formData.append("source", params.source);
+  formData.append("is_verified", "false");
+
+  return uploadRequest("/official-documents/", formData);
+}
+
 // 导出 API 客户端
 export const api = {
   // 文档
@@ -577,6 +679,12 @@ export const api = {
   downloadTranslatedImage,
   downloadOriginalImage,
   deleteImageTranslation,
+
+  // 公文库
+  fetchOfficialDocuments,
+  deleteOfficialDocument,
+  downloadOfficialDocument,
+  uploadOfficialDocument,
 
   // 健康检查
   healthCheck,

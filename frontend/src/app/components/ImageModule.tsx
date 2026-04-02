@@ -375,11 +375,9 @@ export function ImageModule() {
               支持 JPG、PNG，最多 {MAX_IMAGES} 张
             </p>
             <div className="mt-6 flex gap-3 flex-wrap justify-center">
-              {["英语→中文", "日语→中文", "法语→中文", "德语→中文"].map((lang) => (
-                <span key={lang} className="px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", color: "#64748b", fontFamily: "'Noto Sans SC', sans-serif" }}>
-                  {lang}
-                </span>
-              ))}
+              <span className="px-3 py-1.5 rounded-full text-sm font-medium" style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", color: "#9b1c1c", fontFamily: "'Noto Sans SC', sans-serif" }}>
+                英语 → 中文
+              </span>
             </div>
           </motion.div>
 
@@ -782,30 +780,6 @@ export function ImageModule() {
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Stats */}
-            <div className="flex-shrink-0 px-5 pb-4 flex gap-3">
-              {[
-                { label: "识别文字块", value: "23", unit: "处" },
-                { label: "翻译语言", value: "英→中", unit: "" },
-                { label: "处理时长", value: "8.4", unit: "秒" },
-                { label: "置信度", value: "97.3", unit: "%" },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="flex-1 px-3 py-2 rounded-lg text-center"
-                  style={{ backgroundColor: "#fff", border: "1px solid #e2e8f0" }}
-                >
-                  <div style={{ fontSize: 18, color: "#0f172a", fontFamily: "'Noto Sans SC', sans-serif", fontWeight: 600 }}>
-                    {stat.value}
-                    <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 400 }}>{stat.unit}</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "'Noto Sans SC', sans-serif", marginTop: 2 }}>
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
             </div>
           </>
         ) : (

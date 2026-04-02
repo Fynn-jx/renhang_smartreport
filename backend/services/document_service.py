@@ -29,7 +29,7 @@ class DocumentService:
         self,
         document_data: DocumentCreate,
         file_content: bytes,
-        owner_id: uuid.UUID,
+        owner_id: str | uuid.UUID,
         db: AsyncSession,
     ) -> Document:
         """
@@ -38,17 +38,25 @@ class DocumentService:
         Args:
             document_data: 文档数据
             file_content: 文件内容（字节）
-            owner_id: 所有者 ID
+            owner_id: 所有者 ID（支持字符串或 UUID 对象）
             db: 数据库会话
 
         Returns:
             创建的文档对象
         """
         try:
+            # 转�� owner_id 为字符串
+            owner_id_str = str(owner_id) if isinstance(owner_id, uuid.UUID) else owner_id
+
             # 0. 先计算哈希检查是否已存在
             file_hash_check = file_service.get_file_hash(file_content)
             existing_result = await db.execute(
-                select(Document).where(Document.file_hash == file_hash_check)
+                select(Document).where(
+                    and_(
+                        Document.file_hash == file_hash_check,
+                        Document.owner_id == owner_id_str
+                    )
+                )
             )
             existing_doc = existing_result.scalar_one_or_none()
             if existing_doc:
@@ -104,7 +112,7 @@ class DocumentService:
                 keywords=document_data.keywords,
                 source_url=document_data.source_url,
                 source_type=document_data.source_type,
-                owner_id=owner_id,
+                owner_id=owner_id_str,
                 parent_id=document_data.parent_id,
                 is_shared=document_data.is_shared if document_data.is_shared is not None else False,
             )
@@ -145,28 +153,32 @@ class DocumentService:
 
     async def get_document(
         self,
-        document_id: uuid.UUID,
-        owner_id: uuid.UUID,
+        document_id: uuid.UUID | str,
+        owner_id: str | uuid.UUID,
         db: AsyncSession,
     ) -> Optional[Document]:
         """
         获取单个文档
 
         Args:
-            document_id: 文档 ID
-            owner_id: 所有者 ID
+            document_id: 文档 ID（支持字符串或 UUID 对象）
+            owner_id: 所有者 ID（支持字符串或 UUID 对象）
             db: 数据库会话
 
         Returns:
             文档对象，如果不存在返回 None
         """
         try:
+            # 转换为字符串
+            document_id_str = str(document_id)
+            owner_id_str = str(owner_id) if isinstance(owner_id, uuid.UUID) else owner_id
+
             result = await db.execute(
                 select(Document)
                 .where(
                     and_(
-                        Document.id == str(document_id),
-                        Document.owner_id == str(owner_id),
+                        Document.id == document_id_str,
+                        Document.owner_id == owner_id_str,
                     )
                 )
                 .options(selectinload(Document.tags))
@@ -187,7 +199,7 @@ class DocumentService:
     async def list_documents(
         self,
         query_params: DocumentListQuery,
-        owner_id: uuid.UUID,
+        owner_id: str | uuid.UUID,
         db: AsyncSession,
     ) -> tuple[List[Document], int]:
         """
@@ -195,18 +207,21 @@ class DocumentService:
 
         Args:
             query_params: 查询参数
-            owner_id: 所有者 ID
+            owner_id: 所有者 ID（支持字符串或 UUID 对象）
             db: 数据库会话
 
         Returns:
             (文档列表, 总数量)
         """
         try:
+            # 转换 owner_id 为字符串
+            owner_id_str = str(owner_id) if isinstance(owner_id, uuid.UUID) else owner_id
+
             # 构建查询：返回自己的文档 + 所有人共享的文档
             stmt = select(Document).where(
                 or_(
-                    Document.owner_id == owner_id,      # 自己的文档
-                    Document.is_shared == True          # 共享的文档
+                    Document.owner_id == owner_id_str,  # 自己的文档
+                    Document.is_shared == True           # 共享的文档
                 )
             )
 
@@ -281,7 +296,7 @@ class DocumentService:
         self,
         document_id: uuid.UUID,
         document_data: DocumentUpdate,
-        owner_id: uuid.UUID,
+        owner_id: str | uuid.UUID,
         db: AsyncSession,
     ) -> Optional[Document]:
         """
@@ -290,7 +305,7 @@ class DocumentService:
         Args:
             document_id: 文档 ID
             document_data: 更新数据
-            owner_id: 所有者 ID
+            owner_id: 所有者 ID（支持字符串或 UUID 对象）
             db: 数据库会话
 
         Returns:
@@ -336,7 +351,7 @@ class DocumentService:
     async def delete_document(
         self,
         document_id: uuid.UUID,
-        owner_id: uuid.UUID,
+        owner_id: str | uuid.UUID,
         db: AsyncSession,
     ) -> bool:
         """
@@ -344,16 +359,20 @@ class DocumentService:
 
         Args:
             document_id: 文档 ID
-            owner_id: 所有者 ID
+            owner_id: 所有者 ID（支持字符串或 UUID 对象）
             db: 数据库会话
 
         Returns:
             是否删除成功
         """
         try:
+            # 转换 owner_id 为字符串（因为数据库中存储的是字符串）
+            owner_id_str = str(owner_id) if isinstance(owner_id, uuid.UUID) else owner_id
+
             # 获取文档
-            document = await self.get_document(document_id, owner_id, db)
+            document = await self.get_document(document_id, owner_id_str, db)
             if not document:
+                logger.warning(f"[WARNING] 文档不存在或无权删除: document_id={document_id}, owner_id={owner_id_str}")
                 return False
 
             # 删除文件

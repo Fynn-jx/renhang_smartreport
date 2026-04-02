@@ -16,6 +16,12 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { Calendar } from "../../ui/calendar";
+import {
+  fetchOfficialDocuments as apiFetchOfficialDocuments,
+  deleteOfficialDocument as apiDeleteOfficialDocument,
+  downloadOfficialDocument as apiDownloadOfficialDocument,
+  uploadOfficialDocument as apiUploadOfficialDocument,
+} from "../../../../api/client";
 
 // 编译报告来源分类
 type SourceSource = "世界银行" | "IMF" | "联合国" | "联合国非洲经济委员会" | "非洲开发银行" | "WTO" | "OECD" | "中国人民银行" | "国家统计局" | "其他";
@@ -46,22 +52,13 @@ interface DocLibraryItem {
   content_preview?: string;
 }
 
-interface ApiResponse {
-  data: {
-    items: DocLibraryItem[];
-    total: number;
-    page: number;
-    page_size: number;
-  };
-}
-
 // API 基础 URL
 const API_BASE = "http://localhost:8000/api/v1/official-documents";
 
 // 获取认证 token
 const getAuthToken = () => localStorage.getItem("token") || "";
 
-// API 调用函数
+// API 调用函数（使用统一的 API 客户端）
 async function fetchOfficialDocuments(params: {
   page?: number;
   page_size?: number;
@@ -69,61 +66,16 @@ async function fetchOfficialDocuments(params: {
   keyword?: string;
   sort_by?: string;
   sort_order?: string;
-}): Promise<ApiResponse> {
-  const queryParams = new URLSearchParams();
-  if (params.page) queryParams.append("page", params.page.toString());
-  if (params.page_size) queryParams.append("page_size", params.page_size.toString());
-  if (params.source) queryParams.append("source", params.source);
-  if (params.keyword) queryParams.append("keyword", params.keyword);
-  if (params.sort_by) queryParams.append("sort_by", params.sort_by);
-  if (params.sort_order) queryParams.append("sort_order", params.sort_order);
-
-  const response = await fetch(`${API_BASE}/?${queryParams}`, {
-    headers: {
-      Authorization: `Bearer ${getAuthToken()}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("获取公文列表失败");
-  }
-
-  return response.json();
+}) {
+  return apiFetchOfficialDocuments(params);
 }
 
-async function deleteOfficialDocument(documentId: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/${documentId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${getAuthToken()}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("删除公文失败");
-  }
+async function deleteOfficialDocument(documentId: string): Promise<{ message: string }> {
+  return apiDeleteOfficialDocument(documentId);
 }
 
 async function downloadOfficialDocument(documentId: string, filename: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/${documentId}/download`, {
-    headers: {
-      Authorization: `Bearer ${getAuthToken()}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("下载公文失败");
-  }
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
+  return apiDownloadOfficialDocument(documentId, filename);
 }
 
 async function uploadOfficialDocument(file: File, metadata: {
@@ -131,26 +83,7 @@ async function uploadOfficialDocument(file: File, metadata: {
   description?: string;
   source: string;
 }): Promise<any> {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("title", metadata.title);
-  if (metadata.description) formData.append("description", metadata.description);
-  formData.append("source", metadata.source);
-  formData.append("is_verified", "false");
-
-  const response = await fetch(API_BASE, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getAuthToken()}`,
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error("上传公文失败");
-  }
-
-  return response.json();
+  return apiUploadOfficialDocument({ file, ...metadata });
 }
 
 // ─── More Vertical Button with Delete Menu ─────────────────────────────────────
@@ -199,6 +132,8 @@ function MoreVerticalButton({ docId, onDelete }: { docId: string; onDelete: (doc
               whileHover={{ backgroundColor: "#fef2f2" }}
               onClick={(e) => {
                 e.stopPropagation();
+                console.log("=== 删除按钮点击 ===");
+                console.log("文档 ID:", docId);
                 onDelete(docId);
                 setIsOpen(false);
               }}
@@ -849,7 +784,7 @@ function TableView({
                 <tr
                   key={doc.id}
                   onClick={() => {
-                    console.log("Table row clicked:", doc.title);
+                    console.log("Table row clicked:", doc.id, doc.title);
                     onDocClick(doc);
                   }}
                   className="cursor-pointer group"
@@ -920,6 +855,7 @@ export function DocLibraryModule() {
   const loadDocuments = async () => {
     setLoading(true);
     try {
+      // 添加时间戳参数，强制绕过缓存
       const response = await fetchOfficialDocuments({
         page: 1,
         page_size: 100,
@@ -928,7 +864,7 @@ export function DocLibraryModule() {
       });
 
       // 转换数据格式
-      const items = response.data.items.map((item: any) => ({
+      const items = response.items.map((item: any) => ({
         id: item.id,
         title: item.title,
         source: item.source,
@@ -952,6 +888,7 @@ export function DocLibraryModule() {
   // 初始加载
   useEffect(() => {
     loadDocuments();
+    console.log("=== 公文库组件已挂载 ===");
   }, []);
 
   // 处理文档点击
@@ -976,9 +913,19 @@ export function DocLibraryModule() {
   const handleDelete = async (docId: string) => {
     if (!confirm("确定要删除这个公文吗？")) return;
 
+    console.log("=== 开始删除公文 ===");
+    console.log("要删除的文档 ID:", docId);
+
     try {
-      await deleteOfficialDocument(docId);
+      const result = await deleteOfficialDocument(docId);
+      console.log("删除 API 响应:", result);
+
+      // 等待一下，确保后端处理完成
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log("重新加载文档列表...");
       await loadDocuments();
+      console.log("文档列表已更新");
     } catch (error) {
       console.error("删除失败:", error);
       alert("删除失败，请重试");

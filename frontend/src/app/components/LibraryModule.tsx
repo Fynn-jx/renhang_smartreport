@@ -1901,11 +1901,28 @@ export function LibraryModule() {
     setLibState("B");
   };
 
-  const handleDeleteDoc = (docId: string) => {
-    setDocsList((prev) => prev.filter((d) => d.id !== docId));
-    if (selectedDoc?.id === docId) {
-      setSelectedDoc(null);
-      setLibState("A");
+  const handleDeleteDoc = async (docId: string) => {
+    if (!confirm("确定要删除这个文档吗？")) return;
+
+    console.log("=== 删除文档 ===");
+    console.log("文档 ID:", docId);
+
+    try {
+      // 调用 API 删除文档
+      await api.deleteDocument(docId);
+      console.log("API 删除成功");
+
+      // 从本地状态中移除
+      setDocsList((prev) => prev.filter((d) => d.id !== docId));
+      if (selectedDoc?.id === docId) {
+        setSelectedDoc(null);
+        setLibState("A");
+      }
+
+      console.log("本地状态已更新");
+    } catch (error) {
+      console.error("删除失败:", error);
+      alert("删除失败，请重试");
     }
   };
 
