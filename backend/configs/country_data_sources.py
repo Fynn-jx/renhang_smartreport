@@ -2,6 +2,14 @@
 国家数据源配置系统
 插拔式设计，支持动态添加/切换国家数据源
 预设非洲全部国家
+
+权威数据源优先级说明：
+1. 各国央行 - 最权威的货币、金融、外汇数据
+2. 各国统计局 - 最权威的经济、人口、就业数据
+3. 各国财政部 - 最权威的财政、债务数据
+4. 中国外交部 - 最权威的对华关系数据
+5. 国际组织 - IMF、世界银行、联合国等
+6. 其他官方机构 - 交易所、监管部门等
 """
 
 from typing import Dict, List, Optional, Any
@@ -11,7 +19,7 @@ from loguru import logger
 
 
 class DataSourceType(Enum):
-    """数据源类��"""
+    """数据源类型"""
     TRADING_ECONOMICS = "trading_economics"  # Trading Economics 经济数据
     CENTRAL_BANK = "central_bank"            # 央行官网
     MINISTRY_FINANCE = "ministry_finance"    # 财政部

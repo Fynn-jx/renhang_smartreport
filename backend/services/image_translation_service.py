@@ -286,10 +286,74 @@ class ImageTranslationService:
             logger.info(f"[DEBUG] response 类型: {type(response)}")
             logger.info(f"[DEBUG] response.content: {response.content}")
             logger.info(f"[DEBUG] response.images: {getattr(response, 'images', '属性不存在')}")
-            logger.info(f"[DEBUG] response 所有属性: {dir(response)}")
+
+            # 打印所有属性及其值
+            logger.info(f"[DEBUG] ===== response 所有属性 =====")
+            for attr in dir(response):
+                if not attr.startswith('_'):
+                    try:
+                        value = getattr(response, attr)
+                        if not callable(value):
+                            value_str = str(value)
+                            if len(value_str) > 200:
+                                value_str = value_str[:200] + "..."
+                            logger.info(f"[DEBUG] {attr}: {type(value)} = {value_str}")
+                    except Exception as e:
+                        logger.info(f"[DEBUG] {attr}: 无法访问 ({e})")
+
+            # 检查是否有额外属性（某些模型可能用不同的方式返回）
+            logger.info(f"[DEBUG] ===== 检查底层对象 =====")
+            logger.info(f"[DEBUG] response.__dict__.keys(): {list(response.__dict__.keys())}")
 
             # 检查是否有 images 数组
-            if response.images:
+            if hasattr(response, 'images') and response.images:
+                logger.info(f"[INFO] 找到 {len(response.images)} 张图片")
+                for image in response.images:
+                    logger.info(f"[DEBUG] image 类型: {type(image)}, 内容: {image}")
+                    # 提取 base64 data URL（严格按照官方文档格式）
+                    image_url = image['image_url']['url']
+                    logger.info(f"[INFO] 成功提取转译后的图片，URL长度: {len(image_url)}")
+
+                    # 处理 data:image/xxx;base64, 格式
+                    if image_url.startswith("data:image"):
+                        _, base64_data = image_url.split(",", 1)
+                        return base64.b64decode(base64_data)
+                    else:
+                        # 纯 base64
+                        return base64.b64decode(image_url)
+
+            # 检查 content 字段中是否包含图片数据
+            if response.content and isinstance(response.content, list):
+                logger.info(f"[INFO] content 是列表，检查其中是否有图片数据")
+                for item in response.content:
+                    logger.info(f"[DEBUG] content item: {type(item)} = {item}")
+                    if isinstance(item, dict):
+                        if 'image_url' in item:
+                            image_url = item['image_url'].get('url') if isinstance(item['image_url'], dict) else item['image_url']
+                            logger.info(f"[INFO] 在 content 中找到图片 URL，长度: {len(str(image_url))}")
+
+                            # 处理 data:image/xxx;base64, 格式
+                            if isinstance(image_url, str) and image_url.startswith("data:image"):
+                                _, base64_data = image_url.split(",", 1)
+                                return base64.b64decode(base64_data)
+                            elif isinstance(image_url, str):
+                                # 纯 base64
+                                return base64.b64decode(image_url)
+
+            # 如果 content 是字符串，检查是否包含 base64 数据
+            if response.content and isinstance(response.content, str):
+                content = response.content.strip()
+                if content.startswith("data:image"):
+                    logger.info(f"[INFO] content 是 data URL 格式")
+                    _, base64_data = content.split(",", 1)
+                    return base64.b64decode(base64_data)
+                elif "base64" in content.lower():
+                    logger.info(f"[INFO] content 可能包含 base64 数据")
+                    try:
+                        # 尝试直接解码
+                        return base64.b64decode(content)
+                    except Exception as e:
+                        logger.warning(f"[WARNING] 无法直接解码 content: {e}")
                 logger.info(f"[INFO] 找到 {len(response.images)} 张图片")
                 for image in response.images:
                     logger.info(f"[DEBUG] image 类型: {type(image)}, 内容: {image}")

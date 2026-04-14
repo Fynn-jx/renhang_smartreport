@@ -8,6 +8,7 @@ import uuid
 import json
 from typing import Optional
 from pathlib import Path
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, HTTPException, Request
 from fastapi.responses import StreamingResponse, Response
 from sqlalchemy import select
@@ -126,6 +127,7 @@ async def extract_document_content(
 async def run_academic_to_official(
     file: UploadFile = File(None, description="学术报告文件（PDF/TXT）"),
     document_id: str = Form(None, description="已上传文档的ID（与file二选一）"),
+    style: str = Form("complete", description="公文风格：complete=严谨完整型，concise=简洁概括型"),
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
@@ -367,6 +369,7 @@ async def run_academic_to_official_sync(
             file_path=saved_path,
             progress_callback=collect_progress,
             db=db,
+            style=style,  # 添加风格参数
         )
 
         # 获取最终结果
@@ -1439,6 +1442,7 @@ async def mineru_parse_sync(
 async def export_to_word(
     content: str = Form(..., description="Markdown格式的内容"),
     filename: str = Form(..., description="输出文件名"),
+    document_type: str = Form("translation", description="文档类型: translation=翻译, report=报告"),
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
@@ -1452,41 +1456,62 @@ async def export_to_word(
 
     content: <Markdown内容>
     filename: <文件名.docx>
+    document_type: <文档类型: translation或report>
     ```
 
     **返回：**
     - Word文档文件流
     """
-    try:
-        from utils.markdown_to_word import MarkdownToWordConverter
+    from utils.markdown_to_word import convert_markdown_to_word, DOCX_AVAILABLE
 
-        converter = MarkdownToWordConverter()
-        doc_bytes = converter.convert(content)
+    # 检查python-docx是否可用
+    if not DOCX_AVAILABLE:
+        raise HTTPException(
+            status_code=500,
+            detail="Word导出功能不可用，请安装 python-docx"
+        )
+
+    try:
+        # 根据文档类型选择转换方法
+        doc_bytes = convert_markdown_to_word(
+            content,
+            use_bilingual_format=(document_type == "translation"),
+            document_type=document_type
+        )
+
+        # 验证返回的是有效的Word文档（应该以PK开头，ZIP格式）
+        if not doc_bytes or len(doc_bytes) < 100:
+            raise ValueError("生成的Word文档无效")
+
+        if doc_bytes[:2] != b'PK':
+            logger.error(f"[ERROR] 生成的文件不是有效的DOCX格式，开头: {doc_bytes[:10]}")
+            raise ValueError("生成的文件格式错误")
 
         # 确保文件名以.docx结尾
         if not filename.endswith('.docx'):
             filename = filename.rsplit('.', 1)[0] + '.docx'
 
+        logger.info(f"[SUCCESS] Word导出成功: {filename}, 大小: {len(doc_bytes)} bytes")
+
+        # 对文件名进行URL编码以支持中文
+        encoded_filename = quote(filename)
+
         return Response(
             content=doc_bytes,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
             }
         )
 
-    except ImportError as e:
-        logger.error(f"[ERROR] Word导出失败: {e}")
-        return {
-            "success": False,
-            "error": "Word导出功能不可用，请安装 python-docx"
-        }
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"[ERROR] Word文档生成失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
-        logger.error(f"[ERROR] Word导出失败: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        logger.error(f"[ERROR] Word导出失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Word导出失败: {str(e)}")
 
 
 @router.post("/academic-to-official/sync-with-word")
@@ -1572,6 +1597,7 @@ async def run_academic_to_official_sync_with_word(
             file_path=saved_path,
             progress_callback=collect_progress,
             db=db,
+            style=style,  # 添加风格参数
         )
 
         final_content = context.get("final_content", "")

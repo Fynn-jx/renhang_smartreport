@@ -29,6 +29,227 @@ class MarkdownToWordConverter:
         if not DOCX_AVAILABLE:
             raise ImportError("python-docx 未安装，请运行: pip install python-docx")
 
+    def convert_report(self, markdown_text: str) -> bytes:
+        """
+        转换纯中文报告（国别报告、季度报告）
+
+        Args:
+            markdown_text: Markdown 文本
+
+        Returns:
+            Word 文档字节流
+        """
+        doc = Document()
+
+        # 设置文档属性
+        self._setup_report_styles(doc)
+
+        # 解析并处理内容（支持表格）
+        lines = markdown_text.split('\n')
+        i = 0
+
+        while i < len(lines):
+            line = lines[i].rstrip()
+
+            # 检测Markdown表格
+            if self._is_table_line(line):
+                # 收集所有表格行
+                table_lines = []
+                while i < len(lines) and self._is_table_line(lines[i].rstrip()):
+                    table_lines.append(lines[i].rstrip())
+                    i += 1
+
+                # 添加表格到文档
+                self._add_table_to_doc(doc, table_lines)
+            else:
+                # 普通行处理
+                self._add_report_line(doc, line)
+                i += 1
+
+        # 保存到字节流
+        output = io.BytesIO()
+        doc.save(output)
+        output.seek(0)
+        return output.read()
+
+    def _is_table_line(self, line: str) -> bool:
+        """
+        判断是否为Markdown表格行
+
+        Args:
+            line: 文本行
+
+        Returns:
+            是否为表格行
+        """
+        # 表格行包含 |
+        return '|' in line and line.strip().startswith('|')
+
+    def _add_table_to_doc(self, doc: Document, table_lines: List[str]):
+        """
+        添加Markdown表格到Word文档
+
+        Args:
+            doc: Word文档对象
+            table_lines: 表格行列表
+        """
+        if not table_lines:
+            return
+
+        # 过滤掉分隔行（如 |---|---|）
+        data_lines = [
+            line for line in table_lines
+            if not all(cell.strip().startswith('---') for cell in line.split('|')[1:-1])
+        ]
+
+        if not data_lines:
+            return
+
+        # 解析表格数据
+        table_data = []
+        for line in data_lines:
+            # 移除首尾的 |
+            cells = line.strip().strip('|').split('|')
+            # 清理每个单元格
+            cells = [cell.strip() for cell in cells]
+            table_data.append(cells)
+
+        if not table_data:
+            return
+
+        # 创建表格
+        table = doc.add_table(rows=len(table_data), cols=len(table_data[0]))
+        table.style = 'Table Grid'
+
+        # 填充表格数据
+        for i, row_data in enumerate(table_data):
+            row = table.rows[i]
+            for j, cell_data in enumerate(row_data):
+                if j < len(row.cells):
+                    cell = row.cells[j]
+                    cell.text = cell_data
+
+                    # 设置单元格字体
+                    for paragraph in cell.paragraphs:
+                        for run in paragraph.runs:
+                            run.font.name = '宋体'
+                            run.font.size = Pt(10.5)
+                            run.element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+
+                    # 表头样式（第一行）
+                    if i == 0:
+                        for paragraph in cell.paragraphs:
+                            for run in paragraph.runs:
+                                run.font.bold = True
+                                run.font.size = Pt(11)
+
+    def _setup_report_styles(self, doc: Document):
+        """
+        设置报告文档样式
+
+        Args:
+            doc: Word 文档对象
+        """
+        # 设置默认字体（仿宋/宋体，公文标准）
+        style = doc.styles['Normal']
+        font = style.font
+        font.name = '仿宋'
+        font.size = Pt(12)
+        font.color.rgb = RGBColor(0, 0, 0)
+
+        # 设置中文字体
+        style.element.rPr.rFonts.set(qn('w:eastAsia'), '仿宋')
+
+        # 设置段落格式
+        paragraph_format = style.paragraph_format
+        paragraph_format.line_spacing = 1.5
+        paragraph_format.space_before = Pt(0)
+        paragraph_format.space_after = Pt(0)
+        paragraph_format.first_line_indent = Inches(0.29)
+
+    def _add_report_line(self, doc: Document, line: str):
+        """
+        添加报告行到文档
+
+        Args:
+            doc: Word 文档对象
+            line: 文本行
+        """
+        line = line.rstrip()
+
+        # 空行
+        if not line:
+            doc.add_paragraph()
+            return
+
+        # 一级标题 (#)
+        if line.startswith('# '):
+            title = line[2:].strip()
+            heading = doc.add_heading(title, level=1)
+            heading.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            heading.runs[0].font.name = '宋体'
+            heading.runs[0].font.size = Pt(16)
+            heading.runs[0].font.bold = True
+            heading.runs[0].element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+            return
+
+        # 二级标题 (##)
+        if line.startswith('## '):
+            title = line[3:].strip()
+            heading = doc.add_heading(title, level=2)
+            heading.runs[0].font.name = '黑体'
+            heading.runs[0].font.size = Pt(14)
+            heading.runs[0].font.bold = True
+            heading.runs[0].element.rPr.rFonts.set(qn('w:eastAsia'), '黑体')
+            return
+
+        # 三级标题 (###)
+        if line.startswith('### '):
+            title = line[4:].strip()
+            heading = doc.add_heading(title, level=3)
+            heading.runs[0].font.name = '楷体'
+            heading.runs[0].font.size = Pt(13)
+            heading.runs[0].font.bold = True
+            heading.runs[0].element.rPr.rFonts.set(qn('w:eastAsia'), '楷体')
+            return
+
+        # 加粗文本 **text**
+        if line.startswith('**') and line.endswith('**'):
+            text = line[2:-2]
+            para = doc.add_paragraph()
+            run = para.add_run(text)
+            run.font.name = '黑体'
+            run.font.size = Pt(12)
+            run.font.bold = True
+            run.element.rPr.rFonts.set(qn('w:eastAsia'), '黑体')
+            return
+
+        # 分隔线
+        if line.startswith('---') or line.startswith('***'):
+            para = doc.add_paragraph()
+            para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            run = para.add_run('─' * 20)
+            run.font.color.rgb = RGBColor(128, 128, 128)
+            return
+
+        # 数据来源标注 [Data Source: ...] 或 【数据来源：...】
+        if '[Data Source:' in line or '【数据来源：' in line:
+            para = doc.add_paragraph()
+            run = para.add_run(line)
+            run.font.name = '宋体'
+            run.font.size = Pt(10.5)
+            run.font.color.rgb = RGBColor(100, 100, 100)
+            run.element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+            para.paragraph_format.first_line_indent = 0
+            return
+
+        # 普通段落
+        para = doc.add_paragraph()
+        run = para.add_run(line)
+        run.font.name = '仿宋'
+        run.font.size = Pt(12)
+        run.element.rPr.rFonts.set(qn('w:eastAsia'), '仿宋')
+
     def convert(self, markdown_text: str) -> bytes:
         """
         将 Markdown 文本转换为 Word 文档字节流
@@ -315,13 +536,14 @@ class MarkdownToWordConverter:
 markdown_to_word_converter = MarkdownToWordConverter() if DOCX_AVAILABLE else None
 
 
-def convert_markdown_to_word(markdown_text: str, use_bilingual_format: bool = True) -> bytes:
+def convert_markdown_to_word(markdown_text: str, use_bilingual_format: bool = True, document_type: str = "translation") -> bytes:
     """
     将 Markdown 文本转换为 Word 文档
 
     Args:
         markdown_text: Markdown 格式的文本
         use_bilingual_format: 是否使用双语对照格式
+        document_type: 文档类型 ("translation"=翻译, "report"=报告)
 
     Returns:
         Word 文档的字节流
@@ -331,7 +553,9 @@ def convert_markdown_to_word(markdown_text: str, use_bilingual_format: bool = Tr
 
     converter = MarkdownToWordConverter()
 
-    if use_bilingual_format:
+    if document_type == "report":
+        return converter.convert_report(markdown_text)
+    elif use_bilingual_format:
         return converter.convert_bilingual(markdown_text)
     else:
         return converter.convert(markdown_text)

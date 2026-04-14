@@ -239,7 +239,6 @@ export function QuarterlyReportModule() {
   const [selectedRegion, setSelectedRegion] = useState<AfricanRegion | "全部">("全部");
   const [error, setError] = useState<string | null>(null);
   const [currentProgress, setCurrentProgress] = useState(0);
-  const [currentThinkingNode, setCurrentThinkingNode] = useState<{ title: string; content: string } | null>(null);
 
   // 根据选中区域过滤国家列表
   const filteredCountries = selectedRegion === "全部"
@@ -264,7 +263,6 @@ export function QuarterlyReportModule() {
     setDisplayedResult("");
     setResultDone(false);
     setCurrentProgress(0);
-    setCurrentThinkingNode(null);
 
     // 获取国家代码
     const countryCode = countryToCode[country];
@@ -330,14 +328,6 @@ export function QuarterlyReportModule() {
                 setCurrentStep(stepIndex);
               }
 
-              // 更新思维链节点（如果有）
-              if (parsed.thinking_node) {
-                setCurrentThinkingNode({
-                  title: parsed.thinking_node.title || parsed.message,
-                  content: parsed.thinking_node.content || "",
-                });
-              }
-
               // 如果完成了，提取最终报告
               if (parsed.stage === "completed" && parsed.data?.final_report) {
                 resultBuffer = parsed.data.final_report as string;
@@ -375,7 +365,6 @@ export function QuarterlyReportModule() {
     setResultDone(false);
     setError(null);
     setCurrentProgress(0);
-    setCurrentThinkingNode(null);
   };
 
   return (
@@ -688,18 +677,7 @@ export function QuarterlyReportModule() {
                             fontStyle: "italic",
                           }}
                         >
-                          {currentThinkingNode ? (
-                            <>
-                              <div style={{ fontWeight: 500, marginBottom: 2, color: "#0f172a" }}>
-                                {currentThinkingNode.title}
-                              </div>
-                              <div style={{ fontSize: 11, opacity: 0.8 }}>
-                                {currentThinkingNode.content}
-                              </div>
-                            </>
-                          ) : (
-                            step.detail
-                          )}
+                          {step.detail}
                         </motion.div>
                       )}
                     </div>
@@ -708,32 +686,6 @@ export function QuarterlyReportModule() {
               })}
             </div>
 
-            {/* Thinking Chain Display */}
-            <AnimatePresence>
-              {currentThinkingNode && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="mt-6 p-4 rounded-xl"
-                  style={{
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
-                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6, fontFamily: "'Noto Sans SC', sans-serif" }}>
-                    💭 思维链
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#0f172a", marginBottom: 4, fontFamily: "'Noto Sans SC', sans-serif" }}>
-                    {currentThinkingNode.title}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6, fontFamily: "'Noto Sans SC', sans-serif" }}>
-                    {currentThinkingNode.content}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* Overall progress */}
             <div className="mt-2">

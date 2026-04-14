@@ -8,6 +8,7 @@ import {
   Download,
   RotateCcw,
   AlertCircle,
+  PenLine,
 } from "lucide-react";
 import { api } from "../../api";
 
@@ -280,17 +281,20 @@ function CustomDropdown({
 export function ResearchModule() {
   const [state, setState] = useState<ResearchState>("form");
   const [country, setCountry] = useState("");
-  const [resType, setResType] = useState("国别分析");
+  const [resType, setResType] = useState("国别报告");
   const [model, setModel] = useState("DeepSeek V3");
   const [currentStep, setCurrentStep] = useState(-1);
   const [displayedResult, setDisplayedResult] = useState("");
   const [resultDone, setResultDone] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState<AfricanRegion | "全部">("全部");
   const [error, setError] = useState<string | null>(null);
-  const [currentThinkingNode, setCurrentThinkingNode] = useState<{ title: string; content: string } | null>(null);
+
+  // 编辑功能状态
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState<string>("");
 
   // 根据研究类型选择对应的步骤
-  const progressSteps = resType === "国别研究报告" ? countryResearchSteps : quarterlyReportSteps;
+  const progressSteps = resType === "国别报告" ? countryResearchSteps : quarterlyReportSteps;
 
   // 根据选中区域过滤国家列表
   const filteredCountries = selectedRegion === "全部"
@@ -303,7 +307,6 @@ export function ResearchModule() {
     setError(null);
     setDisplayedResult("");
     setResultDone(false);
-    setCurrentThinkingNode(null);
 
     // 获取国家代码
     const countryCode = countryToCode[country];
@@ -315,7 +318,7 @@ export function ResearchModule() {
 
     try {
       // 根据研究类型选择 API
-      const stream = resType === "国别研究报告"
+      const stream = resType === "国别报告"
         ? await api.startCountryResearch({
             country_code: countryCode,
           })
@@ -330,7 +333,7 @@ export function ResearchModule() {
       let resultBuffer = "";
 
       // 后端 stage 到前端步骤的映射 - 根据研究类型选择不同的映射
-      const stageToStepIndex: Record<string, number> = resType === "国别研究报告"
+      const stageToStepIndex: Record<string, number> = resType === "国别报告"
         ? {
             "config_loading": 0,
             "data_fetching": 1,
@@ -375,20 +378,12 @@ export function ResearchModule() {
               const parsed = JSON.parse(data);
 
               // 解析后端返回的进度更新
-              const { stage, message, thinking_node, data: parsedData } = parsed;
+              const { stage, data: parsedData } = parsed;
 
               // 更新当前步骤
               const stepIndex = stageToStepIndex[stage] ?? 0;
               if (stepIndex < progressSteps.length) {
                 setCurrentStep(stepIndex);
-              }
-
-              // 更新思维链节点（如果有）
-              if (thinking_node) {
-                setCurrentThinkingNode({
-                  title: thinking_node.title || message,
-                  content: thinking_node.content || "",
-                });
               }
 
               // 如果完成了，提取最终报告
@@ -420,7 +415,81 @@ export function ResearchModule() {
     setDisplayedResult("");
     setResultDone(false);
     setError(null);
-    setCurrentThinkingNode(null);
+    setIsEditing(false);
+    setEditedContent("");
+  };
+
+  // 导出为 Word
+  const handleExportWord = async () => {
+    // 选择要导出的内容（编辑后的内容��先）
+    const contentToExport = isEditing ? editedContent : displayedResult;
+
+    if (!contentToExport) {
+      setError("没有可导出的内容");
+      return;
+    }
+
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+      const formData = new FormData();
+      formData.append("content", contentToExport);
+      formData.append("filename", `${country} ${resType}.docx`);
+      formData.append("document_type", "report");  // 使用报告格式
+
+      const response = await fetch(`${API_BASE}/api/v1/workflows/academic-to-official/export-word`, {
+        method: "POST",
+        headers: {
+          ...(localStorage.getItem("authToken") ? { "Authorization": `Bearer ${localStorage.getItem("authToken")}` } : {}),
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        // 尝试解析错误消息
+        const errorData = await response.json().catch(() => ({ detail: `导出失败: ${response.status}` }));
+        throw new Error(errorData.detail || errorData.error || `导出失败: ${response.status}`);
+      }
+
+      // 检查Content-Type
+      const contentType = response.headers.get("Content-Type");
+      if (!contentType?.includes("application/vnd.openxmlformats")) {
+        const errorText = await response.text();
+        console.error("服务器返回了非Word格式:", contentType, errorText);
+        throw new Error("服务器返回了无效的文件格式");
+      }
+
+      // 下载文件
+      const blob = await response.blob();
+
+      // 验证blob是否有效（Word文档是ZIP格式，应该以PK开头）
+      if (blob.size < 100) {
+        throw new Error(`生成的文件太小 (${blob.size} bytes)，可能生成失败`);
+      }
+
+      const arrayBuffer = await blob.arrayBuffer();
+      const header = new Uint8Array(arrayBuffer, 0, 2);
+      if (header[0] !== 0x50 || header[1] !== 0x4B) { // 'PK' in ASCII
+        throw new Error("生成的文件不是有效的Word文档格式");
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${country} ${resType}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // 成功提示
+      console.log(`Word文档导出成功: ${country} ${resType}.docx (${(blob.size / 1024).toFixed(2)} KB)`);
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "导出失败";
+      setError(errorMessage);
+      console.error("Word导出失败:", err);
+    }
   };
 
   return (
@@ -689,18 +758,7 @@ export function ResearchModule() {
                             fontStyle: "italic",
                           }}
                         >
-                          {currentThinkingNode ? (
-                            <>
-                              <div style={{ fontWeight: 500, marginBottom: 2, color: "#0f172a" }}>
-                                {currentThinkingNode.title}
-                              </div>
-                              <div style={{ fontSize: 11, opacity: 0.8 }}>
-                                {currentThinkingNode.content}
-                              </div>
-                            </>
-                          ) : (
-                            step.detail
-                          )}
+                          {step.detail}
                         </motion.div>
                       )}
                     </div>
@@ -709,32 +767,6 @@ export function ResearchModule() {
               })}
             </div>
 
-            {/* Thinking Chain Display */}
-            <AnimatePresence>
-              {currentThinkingNode && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="mt-6 p-4 rounded-xl"
-                  style={{
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
-                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6, fontFamily: "'Noto Sans SC', sans-serif" }}>
-                    💭 思维链
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#0f172a", marginBottom: 4, fontFamily: "'Noto Sans SC', sans-serif" }}>
-                    {currentThinkingNode.title}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6, fontFamily: "'Noto Sans SC', sans-serif" }}>
-                    {currentThinkingNode.content}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* Overall progress */}
             <div className="mt-2">
@@ -795,17 +827,65 @@ export function ResearchModule() {
                   <RotateCcw size={12} />
                   重新研究
                 </motion.button>
-                {resultDone && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.02 }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-white"
-                    style={{ backgroundColor: "#9b1c1c", fontSize: 12.5, fontFamily: "'Noto Sans SC', sans-serif" }}
-                  >
-                    <Download size={13} />
-                    导出为 Word
-                  </motion.button>
+                {resultDone && !isEditing && (
+                  <>
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.02 }}
+                      onClick={() => {
+                        setEditedContent(displayedResult);
+                        setIsEditing(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm"
+                      style={{ border: "1px solid #e2e8f0", color: "#64748b", fontSize: 12.5, fontFamily: "'Noto Sans SC', sans-serif" }}
+                    >
+                      <PenLine size={12} />
+                      编辑内容
+                    </motion.button>
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.02 }}
+                      onClick={handleExportWord}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-white"
+                      style={{ backgroundColor: "#9b1c1c", fontSize: 12.5, fontFamily: "'Noto Sans SC', sans-serif" }}
+                    >
+                      <Download size={13} />
+                      导出为 Word
+                    </motion.button>
+                  </>
+                )}
+                {isEditing && (
+                  <>
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setDisplayedResult(editedContent);
+                        setIsEditing(false);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm"
+                      style={{ border: "1px solid #16a34a", color: "#16a34a", fontSize: 12.5, fontFamily: "'Noto Sans SC', sans-serif" }}
+                    >
+                      <CheckCircle2 size={12} />
+                      确认
+                    </motion.button>
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleExportWord}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-white"
+                      style={{ backgroundColor: "#9b1c1c", fontSize: 12.5, fontFamily: "'Noto Sans SC', sans-serif" }}
+                    >
+                      <Download size={13} />
+                      确认并导出
+                    </motion.button>
+                  </>
                 )}
               </div>
             </div>
@@ -815,24 +895,40 @@ export function ResearchModule() {
               className="flex-1 overflow-auto p-8 rounded-b-xl"
               style={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderTop: "none" }}
             >
-              <div
-                style={{
-                  fontFamily: "'Noto Serif SC', 'SimSun', serif",
-                  fontSize: 15,
-                  lineHeight: 2.1,
-                  color: "#1e293b",
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {displayedResult}
-                {state === "result" && !resultDone && (
-                  <motion.span
-                    animate={{ opacity: [1, 0] }}
-                    transition={{ duration: 0.5, repeat: Infinity }}
-                    style={{ display: "inline-block", width: 2, height: 17, backgroundColor: "#9b1c1c", marginLeft: 2, verticalAlign: "text-bottom" }}
-                  />
-                )}
-              </div>
+              {isEditing ? (
+                <textarea
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  className="w-full h-full p-4 rounded-lg resize-none focus:outline-none focus:ring-2"
+                  style={{
+                    fontFamily: "'Noto Serif SC', 'SimSun', serif",
+                    fontSize: 15,
+                    lineHeight: 2.1,
+                    color: "#1e293b",
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "#fafafa",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    fontFamily: "'Noto Serif SC', 'SimSun', serif",
+                    fontSize: 15,
+                    lineHeight: 2.1,
+                    color: "#1e293b",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {displayedResult}
+                  {state === "result" && !resultDone && (
+                    <motion.span
+                      animate={{ opacity: [1, 0] }}
+                      transition={{ duration: 0.5, repeat: Infinity }}
+                      style={{ display: "inline-block", width: 2, height: 17, backgroundColor: "#9b1c1c", marginLeft: 2, verticalAlign: "text-bottom" }}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
         )}

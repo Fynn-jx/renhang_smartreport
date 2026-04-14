@@ -5,6 +5,7 @@
 
 import json
 import asyncio
+import re
 from typing import Optional, List, Dict, Any, Callable, AsyncIterator
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -21,7 +22,9 @@ from configs.country_data_sources import (
     DataSourceConfig,
     DataSourceType
 )
+from configs.prompts import get_quarterly_report_prompt
 from services.web_crawler_service import web_crawler_service, CrawlFormat
+from utils.text_extraction import extract_marked_content
 
 
 class QuarterlyReportStage(Enum):
@@ -118,80 +121,15 @@ class QuarterlyReportService:
     }
 
     # ============== 提示词模板 ==============
-
-    QUARTERLY_REPORT_SYSTEM_PROMPT = """角色设定：
-你是一名供职于中国人民银行系统（PBOC）的金融宏观研究员，专门从事国别宏观经济与金融形势分析。你的任务是将杂乱的抓取数据转化为专业、审慎、供内部决策参考的《国别宏观经济与金融运行情况季报》。
-
-任务说明：
-请基于提供的【数据来源文本】，撰写一篇关于 {country_name} 的季度经济报告。
-
-写作总体要求：
-
-行文风格：客观、中性、严谨。严禁情绪化表达，避免使用"本文认为"、"我们发现"等主观词汇。
-
-逻辑结构：必须严格遵循下述的四大板块结构。
-
-段落格式（核心要求）：禁止使用项目符号（如 *、-、●、1.2.3.）。每个小要点必须作为一个独立的自然段，且段落开头必须使用加粗的短句（概括核心结论），随后紧跟数据分析。
-
-术语规范：使用"同比"、"环比"、"个基点（bps）"、"财年"等专业术语。
-
-数据守则：仅使用提供的数据，若数据缺失，则该部分留空或跳过，不得自行编造。对预测性内容需使用"预计"、"可能"、"仍需关注"等审慎辞令。
-
-时效性原则：优先使用最新的数据（2024-2025年），并在数据后标注具体时间（如2024年Q3、2024年10月）。
-
-文章结构模版：
-
-标题： {country_name}季报（报告日期）
-
-【首段：核心摘要】
-不加标题序号，直接以一个自然段概括该国当季经济的总体表现（如：增长势头、主要矛盾、市场情绪及信用评级变化）。
-
-一、实体经济运行情况
-
-经济增长与主要行业表现。
-[描述GDP增长率、重点行业贡献度、环比/同比变化]
-
-通胀水平与价格走势。
-[描述CPI数据、物价波动原因、核心通胀趋势]
-
-就业形势。
-[描述失业率数据、劳动力市场结构性特征]
-
-对外贸易与外汇相关情况。
-[描述进出口额、贸易逆差/顺差、外汇储备余额及变动因素]
-
-二、金融市场运行情况
-
-股票指数表现。
-[主要指数点位、涨跌幅、市场信心分析]
-
-债券市场与利率变化。
-[收益率曲线走势、国债表现]
-
-汇率走势与资本流动。
-[该国货币对美元汇率区间、升贬值幅度、外汇市场波动情况]
-
-三、宏观经济政策
-
-货币政策操作。
-[加息/降息具体操作、基准利率水平、货币政策目标]
-
-财政政策与结构性改革。
-[财政赤字率、税收改革、重点扶持计划]
-
-其他重要政策动向。
-[最低工资调整、能源价格改革、主权债券发行等]
-
-四、经济前景与风险分析
-
-经济复苏支撑因素。
-[国际机构评级、增长预测、正面驱动力]
-
-经济运行面临的风险与挑战。
-[至少包含三点风险分析：地缘政治影响、资本外流风险、内部结构性约束（如失业、工业薄弱等）]
-
-执行指令：
-现在，请依据提供的资料，撰写{country_name}的季度报告。若资料中缺少某项具体数据，请跳过该细项，保持整体结构的完整性。"""
+    # 使用配置的V3提示词（固定格式+数据来源标注）
+    def _get_quarterly_report_prompt(self, country_name: str, report_date: str) -> str:
+        """获取季度报告提示词"""
+        from datetime import datetime
+        # 如果没有提供report_date，使用当前日期
+        if not report_date:
+            now = datetime.now()
+            report_date = f"{now.year}年{now.month}月"
+        return get_quarterly_report_prompt(country_name, report_date)
 
     def __init__(self):
         """初始化服务"""
@@ -734,7 +672,7 @@ class QuarterlyReportService:
         prompt = f"""请基于以下数据，评估{country_profile.country_name}的经济前景与风险：
 
 重点关注以下方面：
-1. 经济复苏支撑因素（国际机构评级、增长���测、正面驱动力）
+1. 经济复苏支撑因素（国际机构评级、增长预测、正面驱动力）
 2. 经济运行面临的风险与挑战（至少包含三点：地缘政治影响、资本外流风险、内部结构性约束）
 
 可用数据源：
@@ -769,8 +707,9 @@ class QuarterlyReportService:
         """生成最终报告"""
         logger.info(f"[思维链] 开始生成最终报告")
 
-        prompt = self.QUARTERLY_REPORT_SYSTEM_PROMPT.format(
-            country_name=country_profile.country_name
+        prompt = self._get_quarterly_report_prompt(
+            country_name=country_profile.country_name,
+            report_date=""  # 使用当前日期
         )
 
         # 构建分析内容
@@ -817,10 +756,36 @@ class QuarterlyReportService:
 
 1. 结构完整性：包含核心摘要、实体经济、金融市场、宏观政策、风险分析五大板块
 2. 数据准确性：检查数据是否合理，时间标注是否清晰
-3. 语言规范性：确保央行公文风格，避免口语化和主观表述，段落开头使用加粗短句
-4. 格式统一性：标题层次、序号使用规范，禁止使用项目符号
+3. **数据来源汇总表（最重要）**：
+   - 报告末尾必须包含完整的数据来源汇总表
+   - 汇总表必须是5列：数据项、数值（本币/美元）、时间、数据来源机构、数据来源URL
+   - **URL必须具体可访问**，不能使用"..."或占位符
+   - 正文中不得出现[Data Source: ...]或【数据来源：...】标注
+4. **双币种展示（重要）**：
+   - 所有金额类数据必须同时显示本币和美元，格式：[本币数值]/[美元数值]亿美元
+   - 检查每个URL是否使用https://完整格式
+   - 例如：GDP增长4.2%（Q1 2025）[Data Source: CAPMAS, https://www.capmas.gov.eg/]
+   - 如果缺少数据来源标注，必须补充完整
+4. **分析深度（关键）**：每段必须包含深入分析，不能只罗列数据
+   - **原因分析**：说明数据变化的原因（为什么增长/下降？）
+   - **影响解读**：说明数据变化的含义（意味着什么？有什么影响？）
+   - **趋势判断**：分析未来走势（会继续还是反转？）
+   - **关联分析**：说明与其他指标的关系（如通胀与利率的关系）
+   - 每段应该有3-5句话的分析内容，不能只有一句话的数据罗列
+5. 语言规范性：确保央行公文风格，避免口语化和主观表述，段落开头使用加粗短句
+6. 格式统一性：标题层次、序号使用规范，禁止使用项目符号
 
-如发现问题，请修正；如无问题，直接返回原文。
+【输出格式要求】
+请严格按照以下格式输出：
+
+===REPORT_START===
+[这里输出修改后的报告全文，从标题开始]
+===REPORT_END===
+
+注意：
+- 必须使用 ===REPORT_START=== 和 ===REPORT_END=== 标记包裹报告正文
+- 标记之间只包含报告正文，不要包含任何审核意见或说明
+- 直接输出修改后的报告全文
 
 【待审核报告】
 {report}"""
@@ -836,10 +801,21 @@ class QuarterlyReportService:
             timeout=180.0
         )
 
-        result = response.choices[0].message.content
+        raw_result = response.choices[0].message.content
+
+        # 提取标记之间的内容
+        result = self._extract_report_content(raw_result)
+
         logger.info(f"[思维链] 质量审核完成")
         return result
 
+    def _extract_report_content(self, raw_output: str) -> str:
+        """
+        从LLM输出中提取报告正文
+
+        使用通用提取工具函数
+        """
+        return extract_marked_content(raw_output)
 
 # 单例实例
 quarterly_report_service = QuarterlyReportService()

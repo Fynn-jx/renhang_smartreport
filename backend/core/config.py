@@ -64,10 +64,14 @@ class Settings(BaseSettings):
     DEEPSEEK_MODEL: str = "Pro/deepseek-ai/DeepSeek-V3"
     DEEPSEEK_R1_MODEL: str = "deepseek-ai/DeepSeek-R1"
 
-    # OpenRouter (图片转译)
+    # 硅基流动 Kimi (公文写作大纲生成)
+    KIMI_MODEL: str = "Pro/moonshotai/Kimi-K2.5"
+
+    # OpenRouter (图片转译 + 内容整合)
     OPENROUTER_API_KEY: str
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     OPENROUTER_IMAGE_MODEL: str = "google/gemini-3-pro-image-preview"
+    OPENROUTER_TEXT_MODEL: str = "google/gemini-3.1-pro-preview"
 
     # ==================== 向量检索配置 ====================
     VECTOR_STORE_TYPE: str = "pgvector"  # pgvector 或 qdrant

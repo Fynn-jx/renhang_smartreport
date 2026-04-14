@@ -79,6 +79,7 @@ interface Doc {
 interface AiConfig {
   model: string;
   files: string[];
+  style?: "complete" | "concise";  // complete: 严谨完整型, concise: 简洁概括型
 }
 
 // AI 模型配置
@@ -239,6 +240,7 @@ function ConfigModal({
   onConfirm: (config: AiConfig) => void;
 }) {
   const [selectedModel, setSelectedModel] = useState("deepseek");
+  const [selectedStyle, setSelectedStyle] = useState<"complete" | "concise">("complete");  // 默认严谨完整型
   const [attachedFiles, setAttachedFiles] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -250,7 +252,11 @@ function ConfigModal({
   const removeFile = (i: number) => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i));
 
   const handleConfirm = () => {
-    onConfirm({ model: models.find((m) => m.id === selectedModel)?.value ?? "Pro/deepseek-ai/DeepSeek-V3", files: attachedFiles });
+    onConfirm({
+      model: models.find((m) => m.id === selectedModel)?.value ?? "Pro/deepseek-ai/DeepSeek-V3",
+      files: attachedFiles,
+      style: selectedStyle  // 添加风格参数
+    });
   };
 
   return (
@@ -352,6 +358,80 @@ function ConfigModal({
                   </motion.button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Style Selection */}
+          <div className="mb-5">
+            <div
+              className="flex items-center gap-1.5 mb-3"
+              style={{ color: "#374151", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif", fontWeight: 500 }}
+            >
+              <Sparkles size={13} style={{ color: "#64748b" }} />
+              公文风格选择
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <motion.button
+                onClick={() => setSelectedStyle("complete")}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                className="flex flex-col items-start p-3 rounded-xl text-left"
+                style={{
+                  border: selectedStyle === "complete" ? "1.5px solid #9b1c1c" : "1px solid #e2e8f0",
+                  backgroundColor: selectedStyle === "complete" ? "#fef2f2" : "#f8fafc",
+                  transition: "all 0.15s",
+                }}
+              >
+                <div className="flex items-center justify-between w-full mb-0.5">
+                  <span style={{ fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif", color: selectedStyle === "complete" ? "#9b1c1c" : "#0f172a", fontWeight: selectedStyle === "complete" ? 600 : 400 }}>
+                    严谨完整型
+                  </span>
+                  {selectedStyle === "complete" && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="w-4 h-4 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: "#9b1c1c" }}
+                    >
+                      <CheckCircle2 size={10} style={{ color: "#fff" }} />
+                    </motion.div>
+                  )}
+                </div>
+                <span style={{ fontSize: 11, color: "#94a3b8", fontFamily: "'Noto Sans SC', sans-serif" }}>
+                  完整保留内容，详细论述
+                </span>
+              </motion.button>
+
+              <motion.button
+                onClick={() => setSelectedStyle("concise")}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                className="flex flex-col items-start p-3 rounded-xl text-left"
+                style={{
+                  border: selectedStyle === "concise" ? "1.5px solid #9b1c1c" : "1px solid #e2e8f0",
+                  backgroundColor: selectedStyle === "concise" ? "#fef2f2" : "#f8fafc",
+                  transition: "all 0.15s",
+                }}
+              >
+                <div className="flex items-center justify-between w-full mb-0.5">
+                  <span style={{ fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif", color: selectedStyle === "concise" ? "#9b1c1c" : "#0f172a", fontWeight: selectedStyle === "concise" ? 600 : 400 }}>
+                    简洁概括型
+                  </span>
+                  {selectedStyle === "concise" && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="w-4 h-4 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: "#9b1c1c" }}
+                    >
+                      <CheckCircle2 size={10} style={{ color: "#fff" }} />
+                    </motion.div>
+                  )}
+                </div>
+                <span style={{ fontSize: 11, color: "#94a3b8", fontFamily: "'Noto Sans SC', sans-serif" }}>
+                  精炼核心要点，简洁明了
+                </span>
+              </motion.button>
             </div>
           </div>
 
@@ -1354,6 +1434,7 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
       const formData = new FormData();
       formData.append("document_id", doc.id);
       formData.append("model", config.model);
+      formData.append("style", config.style || "complete");  // 添加风格参数，默认严谨完整型
 
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
@@ -1616,7 +1697,19 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
       {/* 翻译模式：生成中/已完成的界面 */}
       {mode === "translate" && !isEditing && (
         <div className="flex-1 overflow-auto p-4">
-          {displayedText ? (
+          {generating && !displayedText ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <motion.div
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.8, repeat: Infinity }}
+                  className="w-8 h-8 rounded-full border-2 mx-auto mb-3"
+                  style={{ borderColor: "#16a34a", borderTopColor: "transparent" }}
+                />
+                <p style={{ color: "#94a3b8", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif" }}>正在翻译文档，请稍候...</p>
+              </div>
+            </div>
+          ) : displayedText ? (
             <div style={{ fontFamily: "'Noto Serif SC', 'SimSun', serif", fontSize: 14, lineHeight: 2.1, color: "#1e293b", whiteSpace: "pre-wrap" }}>
               {displayedText}
               {generating && (
@@ -1627,19 +1720,7 @@ function AIWritingCabin({ doc, mode, config, onBack }: { doc: Doc | null; mode: 
                 />
               )}
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <motion.div
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 1.8, repeat: Infinity }}
-                  className="w-8 h-8 rounded-full border-2 mx-auto mb-3"
-                  style={{ borderColor: "#9b1c1c", borderTopColor: "transparent" }}
-                />
-                <p style={{ color: "#94a3b8", fontSize: 13, fontFamily: "'Noto Sans SC', sans-serif" }}>AI 引擎正在思考与生成……</p>
-              </div>
-            </div>
-          )}
+          ) : null}
         </div>
       )}
 
