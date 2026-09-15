@@ -4,10 +4,10 @@
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
 from loguru import logger
 
 from core.config import settings
+from models.base import Base
 
 
 # 创建异步引擎
@@ -35,22 +35,27 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
-
-class Base(DeclarativeBase):
-    """所有模型的基类"""
-
-    pass
+_db_initialized = False
 
 
 async def init_db():
     """初始化数据库"""
+    global _db_initialized
+    if _db_initialized:
+        return
+
     try:
+        # Ensure every model is registered on the shared metadata before
+        # create_all runs. This is also required on serverless cold starts.
+        import models  # noqa: F401
+
         async with engine.begin() as conn:
             # 创建所有表（开发环境）
             # 生产环境应该使用 Alembic 迁移
             if settings.ENVIRONMENT == "development":
                 await conn.run_sync(Base.metadata.create_all)
                 logger.info("[OK] 数据库表创建成功")
+        _db_initialized = True
     except Exception as e:
         logger.error(f"[ERROR] 数据库初始化失败: {e}")
         raise
@@ -73,6 +78,12 @@ async def get_db() -> AsyncSession:
         async def get_document(doc_id: str, db: AsyncSession = Depends(get_db)):
             ...
     """
+    # Some serverless runtimes do not run ASGI lifespan hooks reliably.
+    # create_all is idempotent and guarantees a fresh /tmp SQLite database is
+    # usable before the first database-backed request.
+    if settings.ENVIRONMENT == "development":
+        await init_db()
+
     async with AsyncSessionLocal() as session:
         try:
             yield session
