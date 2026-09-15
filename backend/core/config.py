@@ -108,7 +108,7 @@ class Settings(BaseSettings):
     LOG_FILE: str = "./logs/app.log"
 
     # ==================== Firecrawl 配置 ====================
-    FIRECRAWL_API_KEY: str = "fc-35ad753d0ef8430e9109612903220c72"
+    FIRECRAWL_API_KEY: str = ""
     FIRECRAWL_BASE_URL: str = "https://api.firecrawl.dev"
 
     # ==================== 知识库配置 ====================

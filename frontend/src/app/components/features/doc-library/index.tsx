@@ -53,7 +53,7 @@ interface DocLibraryItem {
 }
 
 // API 基础 URL
-const API_BASE = "http://localhost:8000/api/v1/official-documents";
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || ""}/api/v1/official-documents`;
 
 // 获取认证 token
 const getAuthToken = () => localStorage.getItem("token") || "";

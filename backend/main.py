@@ -53,7 +53,11 @@ def create_app() -> FastAPI:
     app.include_router(api_router, prefix=settings.API_PREFIX)
 
     # 静态文件服务（用于访问上传的文件）
-    app.mount("/storage", StaticFiles(directory="storage"), name="storage")
+    app.mount(
+        "/storage",
+        StaticFiles(directory=settings.STORAGE_ROOT, check_dir=False),
+        name="storage",
+    )
 
     # CORS 中间件（最后注册，最先执行）
     app.add_middleware(
